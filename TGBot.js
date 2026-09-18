@@ -1,44 +1,47 @@
-require('@dotenvx/dotenvx').config({ path: 'password.env' }); 
-
+const path = require('path');
+const fs = require('fs');
 const { Telegraf, Markup } = require('telegraf');
 const { Connection, Keypair, PublicKey, clusterApiUrl } = require('@solana/web3.js');
 const { getOrCreateAssociatedTokenAccount, transfer } = require('@solana/spl-token');
 const bs58 = require('bs58'); 
-const fs = require('fs');
 
 const handleBurn = require('./burn'); 
 
+// 1. 環境變數改由 Vercel 雲端傳入，不依賴 password.env 檔案
 const TG_TOKEN = process.env.TG_TOKEN;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const MINT_ADDRESS = process.env.MINT_ADDRESS;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || '0'); 
 
-if (!TG_TOKEN || !PRIVATE_KEY || !MINT_ADDRESS || !process.env.ADMIN_ID) {
-    console.log("\n==================================================");
-    console.log("❌ 驗證失敗：程式【沒有】抓到你的秘密檔案！");
-    console.log("==================================================\n");
-    process.exit(1); 
-}
+// 2. 定義 Vercel 可讀寫的 /tmp 暫存路徑
+const WHITELIST_PATH = path.join('/tmp', 'whitelist.json');
+const HISTORY_PATH = path.join('/tmp', 'history.json');
 
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-const fromWallet = Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY));
-const bot = new Telegraf(TG_TOKEN);
-
-const userStates = {};
-
+// 輔助函式：確保 JSON 讀寫皆在 /tmp 目錄
 function getWhitelist() {
     try {
-        if (!fs.existsSync('./whitelist.json')) return [];
-        return JSON.parse(fs.readFileSync('./whitelist.json', 'utf8').replace(/^\uFEFF/, ''));
+        if (!fs.existsSync(WHITELIST_PATH)) return [];
+        return JSON.parse(fs.readFileSync(WHITELIST_PATH, 'utf8').replace(/^\uFEFF/, ''));
     } catch (e) { return []; }
 }
 
 function getHistory() {
     try {
-        if (!fs.existsSync('./history.json')) return {};
-        return JSON.parse(fs.readFileSync('./history.json', 'utf8'));
+        if (!fs.existsSync(HISTORY_PATH)) return {};
+        return JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf8'));
     } catch (e) { return {}; }
 }
+
+// 避開 process.exit(1)，防止 Vercel 建置階段崩潰
+if (!TG_TOKEN || !PRIVATE_KEY || !MINT_ADDRESS) {
+    console.warn("⚠️ 警告：缺少必要的環境變數（TG_TOKEN, PRIVATE_KEY, MINT_ADDRESS）");
+}
+
+const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+const fromWallet = PRIVATE_KEY ? Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY)) : null;
+const bot = new Telegraf(TG_TOKEN || 'DUMMY_TOKEN');
+
+const userStates = {};
 
 bot.command('myid', (ctx) => {
     ctx.reply(`🆔 您的 Telegram ID 是：${ctx.from.id}`);
@@ -61,8 +64,8 @@ bot.hears('📌 基本介紹', (ctx) => {
         `2️⃣ 機器人框架：Telegraf (Telegram Bot API)\n` +
         `3️⃣ 部署架構：Vercel Serverless (雲端無伺服器)\n` +
         `4️⃣ 區塊鏈互動：@solana/web3.js & @solana/spl-token (Devnet 測試網)\n` +
-        `5️⃣ 安全管理：@dotenvx/dotenvx (環境變數加密隔離)\n` +
-        `6️⃣ 資料儲存：JSON 檔案型資料庫 (記錄白名單與領取次數)`;
+        `5️⃣ 安全管理：Vercel Environment Variables\n` +
+        `6️⃣ 資料儲存：Vercel /tmp 暫存數據庫`;
     ctx.reply(introText);
 });
 
@@ -71,7 +74,6 @@ bot.hears('🎁 領取空投', (ctx) => {
     ctx.reply('🎁 【領取空投模式】\n\n👉 請直接在下方「貼上您的 Solana 錢包地址」即可自動領取！');
 });
 
-// 📊 實時監控數據（已移除錯誤的 fetch，改為直接讀取本地 JSON 計算）
 bot.hears('📊 實時監控數據', async (ctx) => {
     delete userStates[ctx.from.id];
     
@@ -123,7 +125,8 @@ bot.on('text', async (ctx) => {
 
     if (!whitelist.includes(address)) {
         whitelist.push(address);
-        fs.writeFileSync('./whitelist.json', JSON.stringify(whitelist, null, 2));
+        // 修正：寫入 /tmp 目錄
+        fs.writeFileSync(WHITELIST_PATH, JSON.stringify(whitelist, null, 2));
         console.log(`[白名單] 成功加入新地址: ${address}`);
         ctx.reply(`✅ 歡迎新成員！已將您的地址加入白名單。`);
     }
@@ -147,7 +150,8 @@ bot.on('text', async (ctx) => {
         const tx = await transfer(connection, fromWallet, fromAta.address, toAta.address, fromWallet.publicKey, amount);
         
         history[address] = count + 1;
-        fs.writeFileSync('./history.json', JSON.stringify(history, null, 2));
+        // 修正：寫入 /tmp 目錄
+        fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2));
 
         console.log(`💰 【空投成功】地址: ${address} | 累計次數: ${history[address]}/3 | TX: ${tx}`);
 
@@ -167,5 +171,4 @@ bot.command('burn', (ctx) => {
     handleBurn(ctx, connection, fromWallet, MINT_ADDRESS);
 });
 
-// 匯出 bot 實例給 Vercel Webhook 使用
 module.exports = bot;
