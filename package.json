@@ -4,7 +4,7 @@
   "description": "Solana Telegram Bot on Vercel",
   "main": "api/webhook.js",
   "scripts": {
-    "start": "node bot.js",
+    "start": "node TGbot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
