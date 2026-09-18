@@ -1,70 +1,99 @@
-const fs = require('fs');
-const path = require('path');
+const { neon } = require('@neondatabase/serverless');
 const { Connection, PublicKey, clusterApiUrl } = require('@solana/web3.js');
 const { getMint } = require('@solana/spl-token');
 
-const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+const sql = neon(process.env.POSTGRES_URL);
+
+const connection = new Connection(
+    clusterApiUrl('devnet'),
+    'confirmed'
+);
+
 const MINT_ADDRESS = process.env.MINT_ADDRESS || '';
 
-// 配合 Vercel 的 /tmp 暫存區路徑邏輯
-const whitelistPath = process.env.VERCEL ? path.join('/tmp', 'whitelist.json') : path.join(process.cwd(), 'whitelist.json');
-const historyPath = process.env.VERCEL ? path.join('/tmp', 'history.json') : path.join(process.cwd(), 'history.json');
-
-function getWhitelist() {
+async function getWhitelistCount() {
     try {
-        let targetPath = whitelistPath;
-        if (!fs.existsSync(targetPath)) {
-            // 如果 /tmp 裡沒有，嘗試讀取專案根目錄的初始檔案
-            const fallbackPath = path.join(process.cwd(), 'whitelist.json');
-            if (fs.existsSync(fallbackPath)) {
-                return JSON.parse(fs.readFileSync(fallbackPath, 'utf8').replace(/^\uFEFF/, ''));
-            }
-            return [];
-        }
-        return JSON.parse(fs.readFileSync(targetPath, 'utf8').replace(/^\uFEFF/, ''));
-    } catch (e) { return []; }
+        const rows = await sql`
+            SELECT COUNT(*)::int AS count
+            FROM whitelist
+        `;
+
+        return rows[0]?.count || 0;
+    } catch (error) {
+        console.error(
+            '❌ 讀取白名單數量失敗：',
+            error.message
+        );
+
+        return 0;
+    }
 }
 
-function getHistory() {
+async function getTotalAirdropCount() {
     try {
-        let targetPath = historyPath;
-        if (!fs.existsSync(targetPath)) {
-            const fallbackPath = path.join(process.cwd(), 'history.json');
-            if (fs.existsSync(fallbackPath)) {
-                return JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
-            }
-            return {};
-        }
-        return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-    } catch (e) { return {}; }
+        const rows = await sql`
+            SELECT COALESCE(SUM(count), 0)::int AS total
+            FROM airdrop_history
+        `;
+
+        return rows[0]?.total || 0;
+    } catch (error) {
+        console.error(
+            '❌ 讀取空投次數失敗：',
+            error.message
+        );
+
+        return 0;
+    }
 }
 
 async function getCurrentSupply() {
     try {
-        if (!MINT_ADDRESS) return 1000000000;
+        if (!MINT_ADDRESS) {
+            return 1000000000;
+        }
+
         const mintPubkey = new PublicKey(MINT_ADDRESS);
-        const mintInfo = await getMint(connection, mintPubkey);
-        return Number(mintInfo.supply) / (10 ** mintInfo.decimals);
-    } catch (err) {
+
+        const mintInfo = await getMint(
+            connection,
+            mintPubkey
+        );
+
+        return Number(mintInfo.supply) /
+            (10 ** mintInfo.decimals);
+
+    } catch (error) {
+        console.error(
+            '❌ 讀取代幣供應量失敗：',
+            error.message
+        );
+
         return 1000000000;
     }
 }
 
 module.exports = async (req, res) => {
-    const whitelist = getWhitelist();
-    const history = getHistory();
+    try {
+        const whitelistCount = await getWhitelistCount();
+        const totalAirdropCount = await getTotalAirdropCount();
+        const currentSupply = await getCurrentSupply();
 
-    let totalAirdropCount = 0;
-    for (const count of Object.values(history)) {
-        totalAirdropCount += count;
+        res.status(200).json({
+            whitelistCount,
+            totalAirdropCount,
+            currentSupply,
+            mintAddress: MINT_ADDRESS
+        });
+
+    } catch (error) {
+        console.error(
+            '❌ stats API 發生錯誤：',
+            error.message
+        );
+
+        res.status(500).json({
+            error: '無法取得即時統計資料'
+        });
     }
-
-    const currentSupply = await getCurrentSupply();
-
-    res.status(200).json({
-        whitelistCount: whitelist.length,
-        totalAirdropCount: totalAirdropCount,
-        currentSupply: currentSupply,
-        mintAddress: MINT_ADDRESS
-    });
 };
