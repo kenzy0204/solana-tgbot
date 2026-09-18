@@ -6,19 +6,36 @@ const { getMint } = require('@solana/spl-token');
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 const MINT_ADDRESS = process.env.MINT_ADDRESS || '';
 
+// 配合 Vercel 的 /tmp 暫存區路徑邏輯
+const whitelistPath = process.env.VERCEL ? path.join('/tmp', 'whitelist.json') : path.join(process.cwd(), 'whitelist.json');
+const historyPath = process.env.VERCEL ? path.join('/tmp', 'history.json') : path.join(process.cwd(), 'history.json');
+
 function getWhitelist() {
     try {
-        const filePath = path.join(process.cwd(), 'whitelist.json');
-        if (!fs.existsSync(filePath)) return [];
-        return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''));
+        let targetPath = whitelistPath;
+        if (!fs.existsSync(targetPath)) {
+            // 如果 /tmp 裡沒有，嘗試讀取專案根目錄的初始檔案
+            const fallbackPath = path.join(process.cwd(), 'whitelist.json');
+            if (fs.existsSync(fallbackPath)) {
+                return JSON.parse(fs.readFileSync(fallbackPath, 'utf8').replace(/^\uFEFF/, ''));
+            }
+            return [];
+        }
+        return JSON.parse(fs.readFileSync(targetPath, 'utf8').replace(/^\uFEFF/, ''));
     } catch (e) { return []; }
 }
 
 function getHistory() {
     try {
-        const filePath = path.join(process.cwd(), 'history.json');
-        if (!fs.existsSync(filePath)) return {};
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        let targetPath = historyPath;
+        if (!fs.existsSync(targetPath)) {
+            const fallbackPath = path.join(process.cwd(), 'history.json');
+            if (fs.existsSync(fallbackPath)) {
+                return JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+            }
+            return {};
+        }
+        return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
     } catch (e) { return {}; }
 }
 

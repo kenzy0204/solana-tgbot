@@ -71,21 +71,11 @@ bot.hears('🎁 領取空投', (ctx) => {
     ctx.reply('🎁 【領取空投模式】\n\n👉 請直接在下方「貼上您的 Solana 錢包地址」即可自動領取！');
 });
 
-// 📊 實時監控數據（改為抓取 Vercel 自己的 API）
+// 📊 實時監控數據（已移除錯誤的 fetch，改為直接讀取本地 JSON 計算）
 bot.hears('📊 實時監控數據', async (ctx) => {
     delete userStates[ctx.from.id];
     
     try {
-        // 透過相對路徑或伺服器本身獲取 stats
-        const response = await fetch('https://' + ctx.telegram.toString() + '/api/stats'); // 確保雲端可訪問
-        // 如果是在 Vercel 上，也可以直接打相對路徑，這裡維持穩定呼叫
-        const statsData = {
-            mintAddress: MINT_ADDRESS,
-            whitelistCount: getWhitelist().length,
-            totalAirdropCount: Object.values(getHistory()).reduce((a, b) => a + b, 0),
-            currentSupply: 1000000000 // 或由鏈上動態計算
-        };
-
         const statsText = `📊 【專題代幣即時監控儀表板】\n\n` +
             `🌐 區塊鏈網路：Solana Devnet (測試網)\n` +
             `🪙 代幣合約地址：\n\`${MINT_ADDRESS}\`\n\n` +
