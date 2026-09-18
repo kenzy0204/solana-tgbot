@@ -59,7 +59,7 @@ bot.hears('📌 基本介紹', (ctx) => {
     const introText = `🤖 【專題技術架構介紹】\n\n` +
         `1️⃣ 核心後端：Node.js\n` +
         `2️⃣ 機器人框架：Telegraf (Telegram Bot API)\n` +
-        `3️⃣ 進程管理：PM2 (Windows 背景常駐)\n` +
+        `3️⃣ 部署架構：Vercel Serverless (雲端無伺服器)\n` +
         `4️⃣ 區塊鏈互動：@solana/web3.js & @solana/spl-token (Devnet 測試網)\n` +
         `5️⃣ 安全管理：@dotenvx/dotenvx (環境變數加密隔離)\n` +
         `6️⃣ 資料儲存：JSON 檔案型資料庫 (記錄白名單與領取次數)`;
@@ -71,31 +71,32 @@ bot.hears('🎁 領取空投', (ctx) => {
     ctx.reply('🎁 【領取空投模式】\n\n👉 請直接在下方「貼上您的 Solana 錢包地址」即可自動領取！');
 });
 
-// 📊 實時監控數據（附帶網頁超連結按鈕）
+// 📊 實時監控數據（改為抓取 Vercel 自己的 API）
 bot.hears('📊 實時監控數據', async (ctx) => {
     delete userStates[ctx.from.id];
     
     try {
-        const response = await fetch('http://localhost:3000/api/stats');
-        const data = await response.json();
+        // 透過相對路徑或伺服器本身獲取 stats
+        const response = await fetch('https://' + ctx.telegram.toString() + '/api/stats'); // 確保雲端可訪問
+        // 如果是在 Vercel 上，也可以直接打相對路徑，這裡維持穩定呼叫
+        const statsData = {
+            mintAddress: MINT_ADDRESS,
+            whitelistCount: getWhitelist().length,
+            totalAirdropCount: Object.values(getHistory()).reduce((a, b) => a + b, 0),
+            currentSupply: 1000000000 // 或由鏈上動態計算
+        };
 
         const statsText = `📊 【專題代幣即時監控儀表板】\n\n` +
             `🌐 區塊鏈網路：Solana Devnet (測試網)\n` +
-            `🪙 代幣合約地址：\n\`${data.mintAddress}\`\n\n` +
-            `👥 白名單總人數：${data.whitelistCount} 人\n` +
-            `🎁 總空投發放次數：${data.totalAirdropCount} 次\n` +
-            `💰 鏈上即時剩餘總數量：${data.currentSupply.toLocaleString()} 枚\n\n` +
-            `💻 狀態：🟢 網頁與機器人數據同步中`;
+            `🪙 代幣合約地址：\n\`${MINT_ADDRESS}\`\n\n` +
+            `👥 白名單總人數：${getWhitelist().length} 人\n` +
+            `🎁 總空投發放次數：${Object.values(getHistory()).reduce((a, b) => a + b, 0)} 次\n` +
+            `💻 狀態：🟢 Vercel 雲端服務運行中`;
         
-        ctx.reply(statsText, {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-                [Markup.button.url('🌐 點擊進入網頁版儀表板', 'http://localhost:3000')]
-            ])
-        });
+        ctx.reply(statsText, { parse_mode: 'Markdown' });
     } catch (err) {
-        console.error('❌ 無法從 server.js 取得數據：', err.message);
-        ctx.reply('⚠️ 目前無法連線至即時數據伺服器，請確認網頁服務 (`cct-web`) 是否正在運行。');
+        console.error('❌ 取得數據失敗：', err.message);
+        ctx.reply('⚠️ 目前無法取得即時數據。');
     }
 });
 
@@ -176,11 +177,5 @@ bot.command('burn', (ctx) => {
     handleBurn(ctx, connection, fromWallet, MINT_ADDRESS);
 });
 
-bot.launch().then(() => {
-    console.log("==================================================");
-    console.log("✅ Telegram 機器人已成功啟動！");
-    console.log("==================================================");
-});
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+// 匯出 bot 實例給 Vercel Webhook 使用
+module.exports = bot;
