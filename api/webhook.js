@@ -1,5 +1,5 @@
 const bot = require('../TGBot'); // 引入你剛剛寫好的 TGBot.js
-
+al
 module.exports = async (req, res) => {
     // 確保只接受來自 Telegram 的 POST 請求
     if (req.method === 'POST') {
