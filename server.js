@@ -10,6 +10,9 @@ const {
 const { getMint } = require('@solana/spl-token');
 
 const app = express();
+
+app.use(express.static('public'));
+
 const PORT = process.env.PORT || 3000;
 const MINT_ADDRESS = process.env.MINT_ADDRESS || '';
 
@@ -424,7 +427,7 @@ app.get('/', async (req, res) => {
             >
 
             <title>
-                Solana 專題代幣即時儀表板
+                創世版權｜區塊鏈數位版權管理系統
             </title>
 
             <link
@@ -469,10 +472,229 @@ app.get('/', async (req, res) => {
                     color: #fff;
                 }
 
-                /* Token 圓環 */
+                /* ========================================
+                   創世版權 Hero
+                ======================================== */
+
+                .hero-section {
+                    position: relative;
+
+                    min-height: 520px;
+
+                    border-radius: 24px;
+
+                    overflow: hidden;
+
+                    background-image:
+                        url('/genesis-copyright-hero.png');
+
+                    background-size: cover;
+
+                    background-position: center;
+
+                    border:
+                        1px solid
+                        rgba(255, 255, 255, 0.12);
+
+                    box-shadow:
+                        0 20px 60px
+                        rgba(0, 0, 0, 0.45);
+                }
+
+                .hero-overlay {
+                    position: absolute;
+
+                    inset: 0;
+
+                    background:
+                        linear-gradient(
+                            90deg,
+                            rgba(5, 8, 20, 0.94) 0%,
+                            rgba(5, 8, 20, 0.78) 35%,
+                            rgba(5, 8, 20, 0.28) 75%,
+                            rgba(5, 8, 20, 0.18) 100%
+                        );
+                }
+
+                .hero-content {
+                    position: relative;
+
+                    z-index: 2;
+
+                    max-width: 650px;
+
+                    padding: 90px 60px;
+                }
+
+                .hero-badge {
+                    display: inline-flex;
+
+                    align-items: center;
+
+                    gap: 8px;
+
+                    padding: 7px 14px;
+
+                    margin-bottom: 24px;
+
+                    border-radius: 999px;
+
+                    font-size: 12px;
+
+                    letter-spacing: 1.5px;
+
+                    font-weight: 700;
+
+                    color: #d7e8ff;
+
+                    background:
+                        rgba(20, 30, 55, 0.72);
+
+                    border:
+                        1px solid
+                        rgba(120, 170, 255, 0.25);
+
+                    backdrop-filter: blur(10px);
+                }
+
+                .status-dot {
+                    width: 7px;
+
+                    height: 7px;
+
+                    border-radius: 50%;
+
+                    background: #36e39a;
+
+                    box-shadow:
+                        0 0 10px
+                        rgba(54, 227, 154, 0.8);
+                }
+
+                .hero-title h1 {
+                    margin: 0;
+
+                    font-size: clamp(52px, 7vw, 88px);
+
+                    font-weight: 800;
+
+                    letter-spacing: 4px;
+
+                    line-height: 1;
+
+                    color: #ffffff;
+
+                    text-shadow:
+                        0 4px 30px
+                        rgba(0, 0, 0, 0.6);
+                }
+
+                .hero-subtitle {
+                    margin-top: 14px;
+
+                    font-size: 18px;
+
+                    letter-spacing: 6px;
+
+                    font-weight: 500;
+
+                    color: #d9c4ff;
+                }
+
+                .hero-description {
+                    margin-top: 26px;
+
+                    max-width: 540px;
+
+                    font-size: 17px;
+
+                    line-height: 1.8;
+
+                    color: rgba(255, 255, 255, 0.78);
+                }
+
+                .hero-buttons {
+                    display: flex;
+
+                    gap: 12px;
+
+                    flex-wrap: wrap;
+
+                    margin-top: 34px;
+                }
+
+                .hero-btn {
+                    display: inline-flex;
+
+                    align-items: center;
+
+                    justify-content: center;
+
+                    padding: 12px 20px;
+
+                    border-radius: 10px;
+
+                    text-decoration: none;
+
+                    font-size: 14px;
+
+                    font-weight: 700;
+
+                    transition:
+                        transform 0.2s ease,
+                        background 0.2s ease,
+                        border-color 0.2s ease;
+
+                    backdrop-filter: blur(10px);
+                }
+
+                .hero-btn:hover {
+                    transform: translateY(-2px);
+                }
+
+                .hero-btn-primary {
+                    color: #ffffff;
+
+                    background:
+                        rgba(105, 72, 190, 0.85);
+
+                    border:
+                        1px solid
+                        rgba(190, 160, 255, 0.5);
+                }
+
+                .hero-btn-primary:hover {
+                    color: #ffffff;
+
+                    background:
+                        rgba(125, 88, 220, 0.95);
+                }
+
+                .hero-btn-secondary {
+                    color: #ffffff;
+
+                    background:
+                        rgba(255, 255, 255, 0.07);
+
+                    border:
+                        1px solid
+                        rgba(255, 255, 255, 0.22);
+                }
+
+                .hero-btn-secondary:hover {
+                    color: #ffffff;
+
+                    background:
+                        rgba(255, 255, 255, 0.14);
+                }
+
+                /* ========================================
+                   Token 圓環
+                ======================================== */
 
                 .token-chart {
                     width: 220px;
+
                     height: 220px;
 
                     border-radius: 50%;
@@ -486,6 +708,7 @@ app.get('/', async (req, res) => {
                     display: flex;
 
                     align-items: center;
+
                     justify-content: center;
 
                     margin: auto;
@@ -497,6 +720,7 @@ app.get('/', async (req, res) => {
 
                 .token-chart-inner {
                     width: 150px;
+
                     height: 150px;
 
                     border-radius: 50%;
@@ -509,6 +733,7 @@ app.get('/', async (req, res) => {
                     flex-direction: column;
 
                     align-items: center;
+
                     justify-content: center;
 
                     text-align: center;
@@ -516,17 +741,65 @@ app.get('/', async (req, res) => {
 
                 .token-chart-number {
                     font-size: 22px;
+
                     font-weight: bold;
                 }
 
                 .token-chart-label {
                     font-size: 13px;
+
                     color: #adb5bd;
                 }
 
                 .stat-number {
                     font-size: 28px;
+
                     font-weight: bold;
+                }
+
+                /* ========================================
+                   手機版
+                ======================================== */
+
+                @media (max-width: 768px) {
+
+                    .hero-section {
+                        min-height: 560px;
+
+                        background-position: 62% center;
+                    }
+
+                    .hero-overlay {
+                        background:
+                            linear-gradient(
+                                180deg,
+                                rgba(5, 8, 20, 0.72) 0%,
+                                rgba(5, 8, 20, 0.86) 65%,
+                                rgba(5, 8, 20, 0.95) 100%
+                            );
+                    }
+
+                    .hero-content {
+                        padding: 60px 28px;
+                    }
+
+                    .hero-title h1 {
+                        font-size: 52px;
+                    }
+
+                    .hero-subtitle {
+                        font-size: 14px;
+
+                        letter-spacing: 4px;
+                    }
+
+                    .hero-description {
+                        font-size: 15px;
+                    }
+
+                    .hero-btn {
+                        width: 100%;
+                    }
                 }
 
             </style>
@@ -537,47 +810,69 @@ app.get('/', async (req, res) => {
 
             <div class="container py-5">
 
-                <header
-                    class="pb-3 mb-4 border-bottom border-secondary d-flex justify-content-between align-items-center flex-wrap"
-                >
+                <!-- ========================================
+                     Hero
+                ======================================== -->
 
-                    <div>
+                <header class="hero-section mb-4">
 
-                        <h1 class="h3 fw-bold text-white">
-                            🚀 Solana 畢業專題代幣管理系統 - 即時儀表板
-                        </h1>
+                    <div class="hero-overlay">
 
-                        <p class="text-light opacity-75 m-0">
+                        <div class="hero-content">
 
-                            系統狀態：
+                            <div class="hero-badge">
 
-                            <span class="text-success fw-bold">
-                                ● 運行中 (Devnet 測試網)
-                            </span>
+                                <span class="status-dot"></span>
 
-                            |
+                                SOLANA DEVNET
 
-                            畫面每 10 秒自動更新
+                            </div>
 
-                        </p>
+                            <div class="hero-title">
 
-                    </div>
+                                <h1>
+                                    創世版權
+                                </h1>
 
-                    <div class="mt-2 mt-md-0">
+                                <div class="hero-subtitle">
+                                    GENESIS COPYRIGHT
+                                </div>
 
-                        <a
-                            href="https://t.me/csu41218163bot"
-                            target="_blank"
-                            class="btn btn-outline-info fw-bold"
-                        >
-                            📱 開啟 Telegram 機器人
-                        </a>
+                            </div>
+
+                            <p class="hero-description">
+                                基於 Solana 區塊鏈打造的數位版權與代幣管理平台
+                            </p>
+
+                            <div class="hero-buttons">
+
+                                <a
+                                    href="https://t.me/csu41218163bot"
+                                    target="_blank"
+                                    class="hero-btn hero-btn-primary"
+                                >
+                                    📱 開啟 Telegram
+                                </a>
+
+                                <a
+                                    href="https://explorer.solana.com/address/${MINT_ADDRESS}?cluster=devnet"
+                                    target="_blank"
+                                    class="hero-btn hero-btn-secondary"
+                                >
+                                    🔗 Solana Explorer
+                                </a>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
                 </header>
 
-                <!-- 系統公告 -->
+                <!-- ========================================
+                     系統公告
+                ======================================== -->
 
                 <div
                     class="alert alert-success shadow-sm mb-4"
@@ -594,7 +889,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 數據卡片 -->
+                <!-- ========================================
+                     數據卡片
+                ======================================== -->
 
                 <div class="row mb-4">
 
@@ -660,7 +957,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- Token 統計 -->
+                <!-- ========================================
+                     Token 統計
+                ======================================== -->
 
                 <div class="card custom-card shadow-sm mb-4">
 
@@ -773,7 +1072,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- Mint Address -->
+                <!-- ========================================
+                     Mint Address
+                ======================================== -->
 
                 <div class="card custom-card shadow-sm mb-4">
 
@@ -791,7 +1092,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 參與者 -->
+                <!-- ========================================
+                     參與者
+                ======================================== -->
 
                 <div class="card custom-card shadow-sm">
 
@@ -859,7 +1162,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 最近空投 -->
+                <!-- ========================================
+                     最近空投
+                ======================================== -->
 
                 <div class="card custom-card shadow-sm mt-4">
 
@@ -921,7 +1226,9 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 最近 Burn -->
+                <!-- ========================================
+                     最近 Burn
+                ======================================== -->
 
                 <div class="card custom-card shadow-sm mt-4">
 
@@ -981,6 +1288,10 @@ app.get('/', async (req, res) => {
                     </div>
 
                 </div>
+
+                <!-- ========================================
+                     Footer
+                ======================================== -->
 
                 <footer
                     class="text-center mt-4 text-secondary small"
