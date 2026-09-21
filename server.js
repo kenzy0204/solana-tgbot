@@ -2,12 +2,16 @@ require('@dotenvx/dotenvx').config({ path: 'password.env' });
 
 const express = require('express');
 const { neon } = require('@neondatabase/serverless');
+
 const {
     Connection,
     PublicKey,
     clusterApiUrl
 } = require('@solana/web3.js');
-const { getMint } = require('@solana/spl-token');
+
+const {
+    getMint
+} = require('@solana/spl-token');
 
 const app = express();
 
@@ -23,15 +27,16 @@ const connection = new Connection(
     'confirmed'
 );
 
-// Token 初始總供應量
 const INITIAL_SUPPLY = 1000000000;
 
 // ========================================
-// 從 Neon 讀取白名單
+// Neon：白名單
 // ========================================
 
 async function getWhitelist() {
+
     try {
+
         const rows = await sql`
             SELECT address
             FROM whitelist
@@ -40,6 +45,7 @@ async function getWhitelist() {
         return rows.map(row => row.address);
 
     } catch (error) {
+
         console.error(
             '❌ 讀取白名單失敗：',
             error.message
@@ -50,11 +56,13 @@ async function getWhitelist() {
 }
 
 // ========================================
-// 從 Neon 讀取空投紀錄
+// Neon：空投歷史
 // ========================================
 
 async function getHistory() {
+
     try {
+
         const rows = await sql`
             SELECT address, count
             FROM airdrop_history
@@ -63,12 +71,15 @@ async function getHistory() {
         const history = {};
 
         for (const row of rows) {
-            history[row.address] = Number(row.count);
+
+            history[row.address] =
+                Number(row.count);
         }
 
         return history;
 
     } catch (error) {
+
         console.error(
             '❌ 讀取空投紀錄失敗：',
             error.message
@@ -79,11 +90,13 @@ async function getHistory() {
 }
 
 // ========================================
-// 最近空投交易
+// Neon：最近空投
 // ========================================
 
 async function getTransactions() {
+
     try {
+
         const rows = await sql`
             SELECT
                 id,
@@ -100,6 +113,7 @@ async function getTransactions() {
         return rows;
 
     } catch (error) {
+
         console.error(
             '❌ 讀取空投交易紀錄失敗：',
             error.message
@@ -110,11 +124,13 @@ async function getTransactions() {
 }
 
 // ========================================
-// 最近 Burn 交易
+// Neon：最近 Burn
 // ========================================
 
 async function getBurnTransactions() {
+
     try {
+
         const rows = await sql`
             SELECT
                 id,
@@ -130,6 +146,7 @@ async function getBurnTransactions() {
         return rows;
 
     } catch (error) {
+
         console.error(
             '❌ 讀取 Burn 交易紀錄失敗：',
             error.message
@@ -140,26 +157,32 @@ async function getBurnTransactions() {
 }
 
 // ========================================
-// 取得鏈上目前供應量
+// Solana：目前供應量
 // ========================================
 
 async function getCurrentSupply() {
+
     try {
+
         if (!MINT_ADDRESS) {
+
             return INITIAL_SUPPLY;
         }
 
-        const mintPubkey = new PublicKey(MINT_ADDRESS);
+        const mintPubkey =
+            new PublicKey(MINT_ADDRESS);
 
-        const mintInfo = await getMint(
-            connection,
-            mintPubkey
-        );
+        const mintInfo =
+            await getMint(
+                connection,
+                mintPubkey
+            );
 
         return Number(mintInfo.supply) /
             (10 ** mintInfo.decimals);
 
     } catch (error) {
+
         console.log(
             '⚠️ 無法取得鏈上供應量：',
             error.message
@@ -174,43 +197,71 @@ async function getCurrentSupply() {
 // ========================================
 
 app.get('/api/stats', async (req, res) => {
+
     try {
-        const whitelist = await getWhitelist();
-        const history = await getHistory();
-        const currentSupply = await getCurrentSupply();
+
+        const whitelist =
+            await getWhitelist();
+
+        const history =
+            await getHistory();
+
+        const currentSupply =
+            await getCurrentSupply();
 
         let totalAirdropCount = 0;
 
-        for (const count of Object.values(history)) {
-            totalAirdropCount += Number(count);
+        for (
+            const count of Object.values(history)
+        ) {
+
+            totalAirdropCount +=
+                Number(count);
         }
 
-        const burnedAmount = Math.max(
-            INITIAL_SUPPLY - currentSupply,
-            0
-        );
+        const burnedAmount =
+            Math.max(
+                INITIAL_SUPPLY -
+                currentSupply,
+                0
+            );
 
         const burnedPercentage =
-            (burnedAmount / INITIAL_SUPPLY) * 100;
+            (burnedAmount /
+                INITIAL_SUPPLY) *
+            100;
 
         res.json({
-            whitelistCount: whitelist.length,
+
+            whitelistCount:
+                whitelist.length,
+
             totalAirdropCount,
+
             currentSupply,
-            initialSupply: INITIAL_SUPPLY,
+
+            initialSupply:
+                INITIAL_SUPPLY,
+
             burnedAmount,
+
             burnedPercentage,
-            mintAddress: MINT_ADDRESS
+
+            mintAddress:
+                MINT_ADDRESS
         });
 
     } catch (error) {
+
         console.error(
             '❌ stats API 發生錯誤：',
             error.message
         );
 
         res.status(500).json({
-            error: '無法取得即時統計資料'
+
+            error:
+                '無法取得即時統計資料'
         });
     }
 });
@@ -220,29 +271,44 @@ app.get('/api/stats', async (req, res) => {
 // ========================================
 
 app.get('/', async (req, res) => {
+
     try {
-        const whitelist = await getWhitelist();
-        const history = await getHistory();
-        const transactions = await getTransactions();
-        const burnTransactions = await getBurnTransactions();
 
-        const currentSupply = await getCurrentSupply();
+        const whitelist =
+            await getWhitelist();
+
+        const history =
+            await getHistory();
+
+        const transactions =
+            await getTransactions();
+
+        const burnTransactions =
+            await getBurnTransactions();
+
+        const currentSupply =
+            await getCurrentSupply();
 
         // ========================================
-        // Token 統計
+        // Token Supply
         // ========================================
 
-        const burnedAmount = Math.max(
-            INITIAL_SUPPLY - currentSupply,
-            0
-        );
+        const burnedAmount =
+            Math.max(
+                INITIAL_SUPPLY -
+                currentSupply,
+                0
+            );
 
         const burnedPercentage =
-            (burnedAmount / INITIAL_SUPPLY) * 100;
+            (burnedAmount /
+                INITIAL_SUPPLY) *
+            100;
 
         const supplyPercentage =
             Math.max(
-                100 - burnedPercentage,
+                100 -
+                burnedPercentage,
                 0
             );
 
@@ -252,43 +318,124 @@ app.get('/', async (req, res) => {
 
         let totalAirdropCount = 0;
 
+        for (
+            const count of Object.values(history)
+        ) {
+
+            totalAirdropCount +=
+                Number(count);
+        }
+
+        // ========================================
+        // 日期格式
+        // ========================================
+
+        function formatDate(date) {
+
+            return new Date(date)
+                .toLocaleString(
+                    'zh-TW',
+                    {
+                        timeZone:
+                            'Asia/Taipei'
+                    }
+                );
+        }
+
+        // ========================================
+        // 縮短地址
+        // ========================================
+
+        function shortAddress(address) {
+
+            if (!address) {
+                return '-';
+            }
+
+            return (
+                address.slice(0, 7) +
+                '...' +
+                address.slice(-5)
+            );
+        }
+
+        // ========================================
+        // 參與者
+        // ========================================
+
         let historyRows = '';
-        let transactionRows = '';
-        let burnTransactionRows = '';
 
-        // ========================================
-        // 參與者紀錄
-        // ========================================
+        for (
+            const [address, count]
+            of Object.entries(history)
+        ) {
 
-        for (const [address, count] of Object.entries(history)) {
+            const remaining =
+                Math.max(
+                    3 -
+                    Number(count),
+                    0
+                );
 
-            totalAirdropCount += Number(count);
+            let badgeClass =
+                'available';
+
+            let badgeText =
+                '可領取';
+
+            if (Number(count) >= 3) {
+
+                badgeClass =
+                    'limit';
+
+                badgeText =
+                    '已達上限';
+
+            } else if (Number(count) >= 2) {
+
+                badgeClass =
+                    'warning';
+
+                badgeText =
+                    '可領 1 次';
+            }
 
             historyRows += `
-                <tr class="text-white">
 
-                    <td style="font-family: monospace; word-break: break-all;">
-                        ${address}
-                    </td>
+                <tr>
 
-                    <td>
-                        <span class="badge ${
-                            count >= 3
-                                ? 'bg-danger'
-                                : 'bg-success'
-                        }">
-                            ${count} / 3 次
+                    <td class="wallet-cell">
+
+                        <span>
+                            ${shortAddress(address)}
                         </span>
+
                     </td>
 
                     <td>
+                        ${count} / 3
+                    </td>
+
+                    <td>
+
+                        <span
+                            class="status-badge ${badgeClass}"
+                        >
+                            ${badgeText}
+                        </span>
+
+                    </td>
+
+                    <td>
+
                         <a
                             href="https://explorer.solana.com/address/${address}?cluster=devnet"
                             target="_blank"
-                            class="btn btn-sm btn-outline-light"
+                            class="table-link"
                         >
-                            查看瀏覽器
+                            查看 ↗
                         </a>
+
                     </td>
 
                 </tr>
@@ -296,60 +443,67 @@ app.get('/', async (req, res) => {
         }
 
         // ========================================
-        // 最近空投交易
+        // 最近空投
         // ========================================
 
-        for (const transaction of transactions) {
+        let transactionRows = '';
 
-            const date = new Date(
-                transaction.created_at
-            ).toLocaleString('zh-TW', {
-                timeZone: 'Asia/Taipei'
-            });
+        for (
+            const transaction
+            of transactions
+        ) {
 
-            const shortAddress =
-                transaction.wallet_address.slice(0, 8) +
-                '...' +
-                transaction.wallet_address.slice(-6);
-
-            const shortTx =
-                transaction.tx_signature.slice(0, 10) +
-                '...' +
-                transaction.tx_signature.slice(-8);
+            const statusClass =
+                transaction.status === 'success'
+                    ? 'success'
+                    : 'failed';
 
             transactionRows += `
-                <tr class="text-white">
+
+                <tr>
 
                     <td>
-                        ${date}
+                        ${formatDate(
+                            transaction.created_at
+                        )}
                     </td>
 
-                    <td style="font-family: monospace;">
-                        ${shortAddress}
+                    <td class="wallet-cell">
+                        ${shortAddress(
+                            transaction.wallet_address
+                        )}
                     </td>
 
                     <td>
-                        ${Number(transaction.amount).toLocaleString()} 枚
+                        ${Number(
+                            transaction.amount
+                        ).toLocaleString()}
                     </td>
 
                     <td>
-                        <span class="badge ${
-                            transaction.status === 'success'
-                                ? 'bg-success'
-                                : 'bg-danger'
-                        }">
-                            ${transaction.status}
+
+                        <span
+                            class="status-badge ${statusClass}"
+                        >
+                            ${
+                                transaction.status === 'success'
+                                    ? '成功'
+                                    : '失敗'
+                            }
                         </span>
+
                     </td>
 
                     <td>
+
                         <a
                             href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
                             target="_blank"
-                            class="btn btn-sm btn-outline-info"
+                            class="table-link"
                         >
-                            ${shortTx}
+                            查看 ↗
                         </a>
+
                     </td>
 
                 </tr>
@@ -357,51 +511,63 @@ app.get('/', async (req, res) => {
         }
 
         // ========================================
-        // 最近 Burn
+        // Burn
         // ========================================
 
-        for (const transaction of burnTransactions) {
+        let burnRows = '';
 
-            const date = new Date(
-                transaction.created_at
-            ).toLocaleString('zh-TW', {
-                timeZone: 'Asia/Taipei'
-            });
+        for (
+            const transaction
+            of burnTransactions
+        ) {
 
-            const shortTx =
-                transaction.tx_signature.slice(0, 10) +
-                '...' +
-                transaction.tx_signature.slice(-8);
+            const statusClass =
+                transaction.status === 'success'
+                    ? 'success'
+                    : 'failed';
 
-            burnTransactionRows += `
-                <tr class="text-white">
+            burnRows += `
+
+                <tr>
 
                     <td>
-                        ${date}
+                        ${formatDate(
+                            transaction.created_at
+                        )}
                     </td>
 
                     <td>
-                        ${Number(transaction.amount).toLocaleString()} 枚
+
+                        ${Number(
+                            transaction.amount
+                        ).toLocaleString()}
+
                     </td>
 
                     <td>
-                        <span class="badge ${
-                            transaction.status === 'success'
-                                ? 'bg-success'
-                                : 'bg-danger'
-                        }">
-                            ${transaction.status}
+
+                        <span
+                            class="status-badge ${statusClass}"
+                        >
+                            ${
+                                transaction.status === 'success'
+                                    ? '成功'
+                                    : '失敗'
+                            }
                         </span>
+
                     </td>
 
                     <td>
+
                         <a
                             href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
                             target="_blank"
-                            class="btn btn-sm btn-outline-danger"
+                            class="table-link"
                         >
-                            ${shortTx}
+                            查看 ↗
                         </a>
+
                     </td>
 
                 </tr>
@@ -413,903 +579,2191 @@ app.get('/', async (req, res) => {
         // ========================================
 
         const html = `
-        <!DOCTYPE html>
 
-        <html lang="zh-TW">
+<!DOCTYPE html>
 
-        <head>
+<html lang="zh-TW">
 
-            <meta charset="UTF-8">
+<head>
 
-            <meta
-                name="viewport"
-                content="width=device-width, initial-scale=1.0"
-            >
+<meta charset="UTF-8">
 
-            <title>
-                創世版權｜區塊鏈數位版權管理系統
-            </title>
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-            <link
-                href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-                rel="stylesheet"
-            >
+<title>
+    創世版權｜GENESIS COPYRIGHT
+</title>
 
-            <meta
-                http-equiv="refresh"
-                content="10"
-            >
+<meta
+    http-equiv="refresh"
+    content="10"
+>
 
-            <style>
+<link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+>
 
-                body {
-                    background:
-                        linear-gradient(
-                            135deg,
-                            #0f172a 0%,
-                            #1e1b4b 100%
-                        );
+<style>
 
-                    color: #f8fafc;
-                    min-height: 100vh;
-                }
+/* ========================================
+   基礎
+======================================== */
 
-                .custom-card {
-                    background:
-                        rgba(255, 255, 255, 0.05);
+* {
+    box-sizing: border-box;
+}
 
-                    backdrop-filter: blur(10px);
+body {
 
-                    border:
-                        1px solid
-                        rgba(255, 255, 255, 0.1);
-                }
+    margin: 0;
 
-                .table-dark-custom {
-                    background-color:
-                        transparent !important;
+    min-height: 100vh;
 
-                    color: #fff;
-                }
+    color: #f5f7ff;
 
-                /* ========================================
-                   創世版權 Hero
-                ======================================== */
+    font-family:
+        Inter,
+        "Noto Sans TC",
+        "Microsoft JhengHei",
+        sans-serif;
 
-                .hero-section {
-                    position: relative;
+    background:
 
-                    min-height: 520px;
+        radial-gradient(
+            circle at 50% -10%,
+            rgba(54, 89, 180, 0.22),
+            transparent 45%
+        ),
 
-                    border-radius: 24px;
+        linear-gradient(
+            180deg,
+            #030814 0%,
+            #050b1d 45%,
+            #020612 100%
+        );
+}
 
-                    overflow: hidden;
+/* ========================================
+   Navbar
+======================================== */
 
-                    background-image:
-                        url('/genesis-copyright-hero.png');
+.top-nav {
 
-                    background-size: cover;
+    position: relative;
 
-                    background-position: center;
+    z-index: 20;
 
-                    border:
-                        1px solid
-                        rgba(255, 255, 255, 0.12);
+    height: 74px;
 
-                    box-shadow:
-                        0 20px 60px
-                        rgba(0, 0, 0, 0.45);
-                }
+    display: flex;
 
-                .hero-overlay {
-                    position: absolute;
+    align-items: center;
 
-                    inset: 0;
+    justify-content: space-between;
 
-                    background:
-                        linear-gradient(
-                            90deg,
-                            rgba(5, 8, 20, 0.94) 0%,
-                            rgba(5, 8, 20, 0.78) 35%,
-                            rgba(5, 8, 20, 0.28) 75%,
-                            rgba(5, 8, 20, 0.18) 100%
-                        );
-                }
+    padding:
+        0 42px;
 
-                .hero-content {
-                    position: relative;
+    border-bottom:
+        1px solid
+        rgba(108, 149, 255, 0.18);
 
-                    z-index: 2;
+    background:
+        rgba(3, 8, 20, 0.92);
 
-                    max-width: 650px;
+    backdrop-filter:
+        blur(18px);
+}
 
-                    padding: 90px 60px;
-                }
+.brand {
 
-                .hero-badge {
-                    display: inline-flex;
+    display: flex;
 
-                    align-items: center;
+    align-items: center;
 
-                    gap: 8px;
+    gap: 13px;
 
-                    padding: 7px 14px;
+    color: #fff;
 
-                    margin-bottom: 24px;
+    text-decoration: none;
+}
 
-                    border-radius: 999px;
+.brand-mark {
 
-                    font-size: 12px;
+    width: 42px;
 
-                    letter-spacing: 1.5px;
+    height: 42px;
 
-                    font-weight: 700;
+    border-radius: 12px;
 
-                    color: #d7e8ff;
+    object-fit: cover;
 
-                    background:
-                        rgba(20, 30, 55, 0.72);
+    border:
+        1px solid
+        rgba(255, 206, 111, 0.45);
 
-                    border:
-                        1px solid
-                        rgba(120, 170, 255, 0.25);
+    box-shadow:
+        0 0 18px
+        rgba(255, 192, 72, 0.18);
+}
 
-                    backdrop-filter: blur(10px);
-                }
+.brand-text {
 
-                .status-dot {
-                    width: 7px;
+    display: flex;
 
-                    height: 7px;
+    flex-direction: column;
 
-                    border-radius: 50%;
+    line-height: 1;
+}
 
-                    background: #36e39a;
+.brand-cn {
 
-                    box-shadow:
-                        0 0 10px
-                        rgba(54, 227, 154, 0.8);
-                }
+    font-size: 18px;
 
-                .hero-title h1 {
-                    margin: 0;
+    font-weight: 800;
 
-                    font-size: clamp(52px, 7vw, 88px);
+    letter-spacing: 4px;
+}
 
-                    font-weight: 800;
+.brand-en {
 
-                    letter-spacing: 4px;
+    margin-top: 5px;
 
-                    line-height: 1;
+    font-size: 8px;
 
-                    color: #ffffff;
+    letter-spacing: 2.5px;
 
-                    text-shadow:
-                        0 4px 30px
-                        rgba(0, 0, 0, 0.6);
-                }
+    color: #aebbd7;
+}
 
-                .hero-subtitle {
-                    margin-top: 14px;
+.nav-links {
 
-                    font-size: 18px;
+    display: flex;
 
-                    letter-spacing: 6px;
+    align-items: center;
 
-                    font-weight: 500;
+    gap: 34px;
+}
 
-                    color: #d9c4ff;
-                }
+.nav-links a {
 
-                .hero-description {
-                    margin-top: 26px;
+    position: relative;
 
-                    max-width: 540px;
+    color: #cbd5eb;
 
-                    font-size: 17px;
+    text-decoration: none;
 
-                    line-height: 1.8;
+    font-size: 14px;
 
-                    color: rgba(255, 255, 255, 0.78);
-                }
+    padding:
+        27px 0;
 
-                .hero-buttons {
-                    display: flex;
+    transition:
+        color .2s ease;
+}
 
-                    gap: 12px;
+.nav-links a:hover,
+.nav-links a.active {
 
-                    flex-wrap: wrap;
+    color: #fff;
+}
 
-                    margin-top: 34px;
-                }
+.nav-links a.active::after {
 
-                .hero-btn {
-                    display: inline-flex;
+    content: "";
 
-                    align-items: center;
+    position: absolute;
 
-                    justify-content: center;
+    left: 0;
 
-                    padding: 12px 20px;
+    right: 0;
 
-                    border-radius: 10px;
+    bottom: 0;
 
-                    text-decoration: none;
+    height: 2px;
 
-                    font-size: 14px;
+    background:
+        linear-gradient(
+            90deg,
+            #4d8dff,
+            #8b5cff
+        );
 
-                    font-weight: 700;
+    box-shadow:
+        0 0 12px
+        rgba(77, 141, 255, .8);
+}
 
-                    transition:
-                        transform 0.2s ease,
-                        background 0.2s ease,
-                        border-color 0.2s ease;
+.network-status {
 
-                    backdrop-filter: blur(10px);
-                }
+    display: flex;
 
-                .hero-btn:hover {
-                    transform: translateY(-2px);
-                }
+    align-items: center;
 
-                .hero-btn-primary {
-                    color: #ffffff;
+    gap: 10px;
 
-                    background:
-                        rgba(105, 72, 190, 0.85);
+    padding:
+        9px 18px;
 
-                    border:
-                        1px solid
-                        rgba(190, 160, 255, 0.5);
-                }
+    border-radius: 999px;
 
-                .hero-btn-primary:hover {
-                    color: #ffffff;
+    color: #21efb0;
 
-                    background:
-                        rgba(125, 88, 220, 0.95);
-                }
+    background:
+        rgba(15, 207, 155, .08);
 
-                .hero-btn-secondary {
-                    color: #ffffff;
+    border:
+        1px solid
+        rgba(15, 207, 155, .35);
 
-                    background:
-                        rgba(255, 255, 255, 0.07);
+    font-size: 13px;
 
-                    border:
-                        1px solid
-                        rgba(255, 255, 255, 0.22);
-                }
+    font-weight: 700;
 
-                .hero-btn-secondary:hover {
-                    color: #ffffff;
+    letter-spacing: 1px;
+}
 
-                    background:
-                        rgba(255, 255, 255, 0.14);
-                }
+.network-dot {
 
-                /* ========================================
-                   Token 圓環
-                ======================================== */
+    width: 9px;
 
-                .token-chart {
-                    width: 220px;
+    height: 9px;
 
-                    height: 220px;
+    border-radius: 50%;
 
-                    border-radius: 50%;
+    background: #19e6a3;
 
-                    background:
-                        conic-gradient(
-                            #dc3545 ${burnedPercentage}%,
-                            #198754 ${burnedPercentage}% 100%
-                        );
+    box-shadow:
+        0 0 12px
+        rgba(25, 230, 163, .9);
+}
 
-                    display: flex;
+/* ========================================
+   Main
+======================================== */
 
-                    align-items: center;
+.dashboard {
 
-                    justify-content: center;
+    width: min(
+        1500px,
+        calc(100% - 56px)
+    );
 
-                    margin: auto;
+    margin: 0 auto;
 
-                    box-shadow:
-                        0 0 30px
-                        rgba(0, 0, 0, 0.35);
-                }
+    padding-bottom: 50px;
+}
 
-                .token-chart-inner {
-                    width: 150px;
+/* ========================================
+   Hero
+======================================== */
 
-                    height: 150px;
+.hero {
 
-                    border-radius: 50%;
+    position: relative;
 
-                    background:
-                        #171b3a;
+    min-height: 480px;
 
-                    display: flex;
+    margin-bottom: 24px;
 
-                    flex-direction: column;
+    overflow: hidden;
 
-                    align-items: center;
+    border:
+        1px solid
+        rgba(93, 134, 229, .25);
 
-                    justify-content: center;
+    border-radius: 0 0 18px 18px;
 
-                    text-align: center;
-                }
+    background-image:
 
-                .token-chart-number {
-                    font-size: 22px;
+        linear-gradient(
+            90deg,
+            rgba(2, 7, 18, .58),
+            rgba(2, 7, 18, .15) 60%,
+            rgba(2, 7, 18, .05)
+        ),
 
-                    font-weight: bold;
-                }
+        url('/genesis-copyright-hero.png');
 
-                .token-chart-label {
-                    font-size: 13px;
+    background-size: cover;
 
-                    color: #adb5bd;
-                }
+    background-position: center;
 
-                .stat-number {
-                    font-size: 28px;
+    box-shadow:
+        0 30px 80px
+        rgba(0, 0, 0, .45);
+}
 
-                    font-weight: bold;
-                }
+.hero::after {
 
-                /* ========================================
-                   手機版
-                ======================================== */
+    content: "";
 
-                @media (max-width: 768px) {
+    position: absolute;
 
-                    .hero-section {
-                        min-height: 560px;
+    inset: 0;
 
-                        background-position: 62% center;
-                    }
+    pointer-events: none;
 
-                    .hero-overlay {
-                        background:
-                            linear-gradient(
-                                180deg,
-                                rgba(5, 8, 20, 0.72) 0%,
-                                rgba(5, 8, 20, 0.86) 65%,
-                                rgba(5, 8, 20, 0.95) 100%
-                            );
-                    }
+    background:
 
-                    .hero-content {
-                        padding: 60px 28px;
-                    }
+        linear-gradient(
+            180deg,
+            transparent 65%,
+            rgba(2, 6, 17, .78) 100%
+        );
+}
 
-                    .hero-title h1 {
-                        font-size: 52px;
-                    }
+.hero-content {
 
-                    .hero-subtitle {
-                        font-size: 14px;
+    position: relative;
 
-                        letter-spacing: 4px;
-                    }
+    z-index: 2;
 
-                    .hero-description {
-                        font-size: 15px;
-                    }
+    width: 52%;
 
-                    .hero-btn {
-                        width: 100%;
-                    }
-                }
+    min-height: 480px;
 
-            </style>
+    display: flex;
 
-        </head>
+    flex-direction: column;
 
-        <body>
+    justify-content: center;
 
-            <div class="container py-5">
+    padding:
+        65px 0 65px 62px;
+}
 
-                <!-- ========================================
-                     Hero
-                ======================================== -->
+.hero-kicker {
 
-                <header class="hero-section mb-4">
+    margin-bottom: 15px;
 
-                    <div class="hero-overlay">
+    color: #d8dff0;
 
-                        <div class="hero-content">
+    font-size: 12px;
 
-                            <div class="hero-badge">
+    letter-spacing: 6px;
 
-                                <span class="status-dot"></span>
+    font-weight: 600;
+}
 
-                                SOLANA DEVNET
+.hero-title {
 
-                            </div>
+    margin: 0;
 
-                            <div class="hero-title">
+    font-size:
+        clamp(
+            48px,
+            5vw,
+            82px
+        );
 
-                                <h1>
-                                    創世版權
-                                </h1>
+    line-height: 1;
 
-                                <div class="hero-subtitle">
-                                    GENESIS COPYRIGHT
-                                </div>
+    font-weight: 800;
 
-                            </div>
+    letter-spacing: 8px;
 
-                            <p class="hero-description">
-                                基於 Solana 區塊鏈打造的數位版權與代幣管理平台
-                            </p>
+    color: #fff;
 
-                            <div class="hero-buttons">
+    text-shadow:
+        0 3px 20px
+        rgba(0, 0, 0, .8);
+}
 
-                                <a
-                                    href="https://t.me/csu41218163bot"
-                                    target="_blank"
-                                    class="hero-btn hero-btn-primary"
-                                >
-                                    📱 開啟 Telegram
-                                </a>
+.hero-en {
 
-                                <a
-                                    href="https://explorer.solana.com/address/${MINT_ADDRESS}?cluster=devnet"
-                                    target="_blank"
-                                    class="hero-btn hero-btn-secondary"
-                                >
-                                    🔗 Solana Explorer
-                                </a>
+    margin-top: 15px;
 
-                            </div>
+    color: #fff;
 
-                        </div>
+    font-size: 22px;
 
-                    </div>
+    letter-spacing: 9px;
 
-                </header>
+    font-weight: 500;
+}
 
-                <!-- ========================================
-                     系統公告
-                ======================================== -->
+.hero-line {
 
-                <div
-                    class="alert alert-success shadow-sm mb-4"
-                    role="alert"
+    width: 48px;
+
+    height: 2px;
+
+    margin:
+        17px 0;
+
+    background:
+        #e9c77d;
+
+    box-shadow:
+        0 0 12px
+        rgba(233, 199, 125, .7);
+}
+
+.hero-description {
+
+    margin: 0;
+
+    color: #d7e1f5;
+
+    font-size: 18px;
+
+    line-height: 1.8;
+
+    max-width: 590px;
+}
+
+.hero-sub-description {
+
+    margin-top: 4px;
+
+    color: #94a6c7;
+
+    font-size: 14px;
+}
+
+.hero-buttons {
+
+    display: flex;
+
+    gap: 14px;
+
+    margin-top: 27px;
+}
+
+.hero-btn {
+
+    min-width: 220px;
+
+    padding:
+        14px 24px;
+
+    display: inline-flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    border-radius: 11px;
+
+    text-decoration: none;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
+}
+
+.hero-btn:hover {
+
+    transform:
+        translateY(-2px);
+}
+
+.hero-btn-primary {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            100deg,
+            #198dff,
+            #7549f5
+        );
+
+    border:
+        1px solid
+        rgba(141, 196, 255, .65);
+
+    box-shadow:
+        0 8px 28px
+        rgba(67, 110, 255, .35);
+}
+
+.hero-btn-secondary {
+
+    color: #fff;
+
+    background:
+        rgba(5, 12, 29, .78);
+
+    border:
+        1px solid
+        rgba(121, 159, 235, .65);
+}
+
+/* ========================================
+   Announcement
+======================================== */
+
+.announcement {
+
+    margin-bottom: 18px;
+
+    padding:
+        18px 22px;
+
+    border-radius: 10px;
+
+    border:
+        1px solid
+        rgba(27, 155, 255, .32);
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(6, 45, 75, .48),
+            rgba(7, 22, 44, .72)
+        );
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+}
+
+.announcement-title {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    font-size: 15px;
+
+    font-weight: 700;
+}
+
+.announcement-title span {
+
+    color: #4db7ff;
+
+    font-size: 20px;
+}
+
+.announcement-text {
+
+    margin-top: 5px;
+
+    color: #9fb0cc;
+
+    font-size: 13px;
+}
+
+.announcement-time {
+
+    color: #8294b4;
+
+    font-size: 12px;
+}
+
+/* ========================================
+   Stats
+======================================== */
+
+.stats-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 20px;
+
+    margin-bottom: 20px;
+}
+
+.stat-card {
+
+    position: relative;
+
+    min-height: 150px;
+
+    padding: 25px;
+
+    overflow: hidden;
+
+    border-radius: 12px;
+
+    background:
+        rgba(7, 17, 39, .8);
+
+    border:
+        1px solid
+        rgba(60, 115, 207, .42);
+
+    box-shadow:
+        0 12px 30px
+        rgba(0, 0, 0, .25);
+}
+
+.stat-card::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 140px;
+
+    height: 140px;
+
+    right: -60px;
+
+    bottom: -70px;
+
+    border-radius: 50%;
+
+    opacity: .16;
+
+    filter: blur(5px);
+}
+
+.stat-blue {
+
+    border-color:
+        rgba(28, 132, 255, .7);
+}
+
+.stat-blue::after {
+
+    background: #168bff;
+}
+
+.stat-purple {
+
+    border-color:
+        rgba(190, 64, 255, .65);
+}
+
+.stat-purple::after {
+
+    background: #c33dff;
+}
+
+.stat-green {
+
+    border-color:
+        rgba(20, 220, 170, .62);
+}
+
+.stat-green::after {
+
+    background: #1de5ac;
+}
+
+.stat-top {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 18px;
+}
+
+.stat-icon {
+
+    width: 58px;
+
+    height: 58px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 13px;
+
+    font-size: 28px;
+}
+
+.stat-blue .stat-icon {
+
+    background:
+        rgba(22, 118, 255, .2);
+
+    color: #53b3ff;
+}
+
+.stat-purple .stat-icon {
+
+    background:
+        rgba(183, 58, 255, .2);
+
+    color: #e07aff;
+}
+
+.stat-green .stat-icon {
+
+    background:
+        rgba(18, 211, 157, .18);
+
+    color: #43edc1;
+}
+
+.stat-label {
+
+    color: #dbe4f5;
+
+    font-size: 15px;
+
+    font-weight: 600;
+}
+
+.stat-number {
+
+    margin-top: 7px;
+
+    color: #fff;
+
+    font-size: 34px;
+
+    line-height: 1;
+
+    font-weight: 800;
+}
+
+.stat-en {
+
+    margin-top: 8px;
+
+    color: #7890b8;
+
+    font-size: 12px;
+}
+
+.stat-change {
+
+    position: absolute;
+
+    right: 22px;
+
+    bottom: 20px;
+
+    padding:
+        7px 11px;
+
+    border-radius: 999px;
+
+    color: #27e9af;
+
+    background:
+        rgba(16, 207, 155, .08);
+
+    font-size: 12px;
+}
+
+/* ========================================
+   Section Cards
+======================================== */
+
+.section-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        1.2fr .9fr;
+
+    gap: 18px;
+
+    margin-bottom: 18px;
+}
+
+.panel {
+
+    border:
+        1px solid
+        rgba(67, 106, 175, .38);
+
+    border-radius: 11px;
+
+    background:
+        rgba(5, 15, 34, .83);
+
+    overflow: hidden;
+}
+
+.panel-header {
+
+    padding:
+        18px 22px;
+
+    border-bottom:
+        1px solid
+        rgba(81, 119, 181, .2);
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+}
+
+.panel-title {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    font-size: 15px;
+
+    font-weight: 700;
+}
+
+.panel-title-icon {
+
+    color: #5ab5ff;
+}
+
+.panel-body {
+
+    padding: 24px;
+}
+
+/* ========================================
+   Supply
+======================================== */
+
+.supply-layout {
+
+    display: grid;
+
+    grid-template-columns:
+        240px 1fr;
+
+    gap: 30px;
+
+    align-items: center;
+}
+
+.donut {
+
+    width: 210px;
+
+    height: 210px;
+
+    margin: auto;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    background:
+
+        conic-gradient(
+            #ff5964
+                ${burnedPercentage}%,
+
+            #18d6a2
+                ${burnedPercentage}%
+                100%
+        );
+
+    position: relative;
+
+    box-shadow:
+        0 0 35px
+        rgba(26, 206, 167, .13);
+}
+
+.donut::before {
+
+    content: "";
+
+    position: absolute;
+
+    inset: 22px;
+
+    border-radius: 50%;
+
+    background:
+        #061128;
+
+    border:
+        1px solid
+        rgba(79, 120, 188, .25);
+}
+
+.donut-content {
+
+    position: relative;
+
+    z-index: 2;
+
+    text-align: center;
+}
+
+.donut-number {
+
+    font-size: 27px;
+
+    font-weight: 800;
+}
+
+.donut-label {
+
+    margin-top: 5px;
+
+    color: #8092b5;
+
+    font-size: 12px;
+}
+
+.supply-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+.supply-row {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 20px;
+
+    padding-bottom: 14px;
+
+    border-bottom:
+        1px solid
+        rgba(73, 104, 155, .16);
+}
+
+.supply-name {
+
+    color: #94a7c8;
+
+    font-size: 13px;
+}
+
+.supply-value {
+
+    color: #f1f5ff;
+
+    font-size: 18px;
+
+    font-weight: 700;
+}
+
+.supply-value.green {
+
+    color: #28e0aa;
+}
+
+.supply-value.red {
+
+    color: #ff626b;
+}
+
+.progress-track {
+
+    height: 9px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background:
+        #142440;
+
+    margin-top: 9px;
+}
+
+.progress-value {
+
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #12d99f,
+            #28edba
+        );
+}
+
+/* ========================================
+   Mint
+======================================== */
+
+.mint-address {
+
+    padding:
+        18px;
+
+    border-radius: 9px;
+
+    background:
+        #07132a;
+
+    border:
+        1px solid
+        rgba(81, 122, 190, .32);
+
+    color: #d9e4fa;
+
+    font-family:
+        Consolas,
+        monospace;
+
+    font-size: 13px;
+
+    word-break: break-all;
+
+    line-height: 1.7;
+}
+
+.explorer-button {
+
+    width: 100%;
+
+    margin-top: 15px;
+
+    padding: 13px;
+
+    border-radius: 8px;
+
+    color: #dce8ff;
+
+    text-align: center;
+
+    text-decoration: none;
+
+    background:
+        rgba(12, 29, 57, .75);
+
+    border:
+        1px solid
+        rgba(88, 129, 196, .45);
+
+    font-size: 13px;
+}
+
+.explorer-button:hover {
+
+    color: #fff;
+
+    background:
+        rgba(23, 52, 94, .8);
+}
+
+/* ========================================
+   Tables
+======================================== */
+
+.tables-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr 1fr;
+
+    gap: 18px;
+
+    margin-top: 18px;
+}
+
+.table-wrap {
+
+    overflow-x: auto;
+}
+
+table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    font-size: 12px;
+}
+
+thead {
+
+    background:
+        rgba(15, 34, 66, .65);
+}
+
+th {
+
+    padding:
+        13px 15px;
+
+    color: #748bb0;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    text-align: left;
+}
+
+td {
+
+    padding:
+        13px 15px;
+
+    color: #b8c6dc;
+
+    border-top:
+        1px solid
+        rgba(67, 99, 148, .13);
+
+    white-space: nowrap;
+}
+
+tr:hover td {
+
+    background:
+        rgba(31, 76, 133, .1);
+}
+
+.wallet-cell {
+
+    font-family:
+        Consolas,
+        monospace;
+
+    color: #c6d4ed;
+}
+
+.status-badge {
+
+    display: inline-block;
+
+    padding:
+        4px 9px;
+
+    border-radius: 999px;
+
+    font-size: 10px;
+
+    font-weight: 700;
+}
+
+.status-badge.success {
+
+    color: #27e8ae;
+
+    background:
+        rgba(25, 224, 166, .1);
+}
+
+.status-badge.failed {
+
+    color: #ff6870;
+
+    background:
+        rgba(255, 81, 95, .1);
+}
+
+.status-badge.available {
+
+    color: #29dfab;
+
+    background:
+        rgba(22, 213, 160, .1);
+}
+
+.status-badge.warning {
+
+    color: #f0d35f;
+
+    background:
+        rgba(240, 211, 95, .1);
+}
+
+.status-badge.limit {
+
+    color: #ff6870;
+
+    background:
+        rgba(255, 81, 95, .1);
+}
+
+.table-link {
+
+    color: #5caeff;
+
+    text-decoration: none;
+
+    font-weight: 600;
+}
+
+.table-link:hover {
+
+    color: #9accff;
+}
+
+/* ========================================
+   Footer
+======================================== */
+
+.footer {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding:
+        25px 5px;
+
+    color: #596d91;
+
+    font-size: 11px;
+}
+
+/* ========================================
+   Mobile
+======================================== */
+
+@media (max-width: 1100px) {
+
+    .nav-links {
+
+        gap: 15px;
+    }
+
+    .nav-links a {
+
+        font-size: 12px;
+    }
+
+    .supply-layout {
+
+        grid-template-columns:
+            1fr;
+    }
+
+    .tables-grid {
+
+        grid-template-columns:
+            1fr;
+    }
+}
+
+@media (max-width: 800px) {
+
+    .top-nav {
+
+        height: auto;
+
+        padding:
+            16px 20px;
+
+        flex-wrap: wrap;
+
+        gap: 15px;
+    }
+
+    .nav-links {
+
+        order: 3;
+
+        width: 100%;
+
+        overflow-x: auto;
+
+        justify-content: flex-start;
+    }
+
+    .nav-links a {
+
+        padding:
+            8px 0;
+
+        white-space: nowrap;
+    }
+
+    .dashboard {
+
+        width:
+            calc(100% - 24px);
+    }
+
+    .hero {
+
+        min-height: 560px;
+
+        background-position:
+            62% center;
+    }
+
+    .hero-content {
+
+        width: 100%;
+
+        min-height: 560px;
+
+        padding:
+            50px 28px;
+
+        justify-content:
+            flex-end;
+
+        background:
+            linear-gradient(
+                180deg,
+                rgba(2, 7, 18, .08),
+                rgba(2, 7, 18, .85)
+            );
+    }
+
+    .hero-title {
+
+        font-size: 52px;
+
+        letter-spacing: 4px;
+    }
+
+    .hero-en {
+
+        font-size: 15px;
+
+        letter-spacing: 5px;
+    }
+
+    .hero-buttons {
+
+        flex-direction: column;
+    }
+
+    .hero-btn {
+
+        width: 100%;
+    }
+
+    .stats-grid {
+
+        grid-template-columns:
+            1fr;
+    }
+
+    .section-grid {
+
+        grid-template-columns:
+            1fr;
+    }
+
+    .footer {
+
+        flex-direction: column;
+
+        gap: 8px;
+
+        text-align: center;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- ========================================
+     NAVBAR
+======================================== -->
+
+<nav class="top-nav">
+
+    <a
+        href="/"
+        class="brand"
+    >
+
+        <img
+            src="/genesis-copyright-hero.png"
+            class="brand-mark"
+            alt="Genesis Copyright"
+        >
+
+        <div class="brand-text">
+
+            <div class="brand-cn">
+                創世版權
+            </div>
+
+            <div class="brand-en">
+                GENESIS COPYRIGHT
+            </div>
+
+        </div>
+
+    </a>
+
+    <div class="nav-links">
+
+        <a
+            href="/"
+            class="active"
+        >
+            首頁
+        </a>
+
+        <a href="#statistics">
+            數據統計
+        </a>
+
+        <a href="#records">
+            領取紀錄
+        </a>
+
+        <a
+            href="https://explorer.solana.com/address/${MINT_ADDRESS}?cluster=devnet"
+            target="_blank"
+        >
+            區塊瀏覽器
+        </a>
+
+        <a href="#about">
+            關於專案
+        </a>
+
+    </div>
+
+    <div class="network-status">
+
+        <span class="network-dot"></span>
+
+        DEVNET
+
+    </div>
+
+</nav>
+
+<!-- ========================================
+     DASHBOARD
+======================================== -->
+
+<main class="dashboard">
+
+    <!-- ========================================
+         HERO
+    ======================================== -->
+
+    <section class="hero">
+
+        <div class="hero-content">
+
+            <div class="hero-kicker">
+                BUILD · CREATE · OWN
+                <br>
+                ON SOLANA
+            </div>
+
+            <h1 class="hero-title">
+                創世版權
+            </h1>
+
+            <div class="hero-en">
+                GENESIS COPYRIGHT
+            </div>
+
+            <div class="hero-line"></div>
+
+            <p class="hero-description">
+                基於 Solana 區塊鏈的數位版權管理系統
+            </p>
+
+            <div class="hero-sub-description">
+                讓創作被看見 · 讓版權有價值
+            </div>
+
+            <div class="hero-buttons">
+
+                <a
+                    href="https://t.me/csu41218163bot"
+                    target="_blank"
+                    class="hero-btn hero-btn-primary"
                 >
-
-                    <h5 class="alert-heading fw-bold">
-                        📢 系統公告
-                    </h5>
-
-                    <p class="mb-0">
-                        🟢 系統目前正常運行，暫無重要公告。
-                    </p>
-
-                </div>
-
-                <!-- ========================================
-                     數據卡片
-                ======================================== -->
-
-                <div class="row mb-4">
-
-                    <div class="col-md-4 mb-3">
-
-                        <div class="card bg-danger shadow h-100 border-0">
-
-                            <div class="card-body">
-
-                                <h5 class="card-title fw-bold text-dark">
-                                    👥 白名單總人數
-                                </h5>
-
-                                <h2 class="display-6 fw-bold text-dark">
-                                    ${whitelist.length} 人
-                                </h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 mb-3">
-
-                        <div class="card bg-warning shadow h-100 border-0">
-
-                            <div class="card-body">
-
-                                <h5 class="card-title fw-bold text-dark">
-                                    🎁 總空投發放次數
-                                </h5>
-
-                                <h2 class="display-6 fw-bold text-dark">
-                                    ${totalAirdropCount} 次
-                                </h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 mb-3">
-
-                        <div class="card bg-success shadow h-100 border-0">
-
-                            <div class="card-body">
-
-                                <h5 class="card-title fw-bold text-dark">
-                                    💰 鏈上即時剩餘總數量
-                                </h5>
-
-                                <h2 class="display-6 fw-bold text-dark">
-                                    ${currentSupply.toLocaleString()} 枚
-                                </h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     Token 統計
-                ======================================== -->
-
-                <div class="card custom-card shadow-sm mb-4">
-
-                    <div
-                        class="card-header bg-transparent py-3 border-bottom border-secondary"
-                    >
-
-                        <h5 class="m-0 fw-bold text-white">
-                            📊 Token Supply 統計
-                        </h5>
-
-                    </div>
-
-                    <div class="card-body">
-
-                        <div class="row align-items-center">
-
-                            <div class="col-md-5 text-center mb-4 mb-md-0">
-
-                                <div class="token-chart">
-
-                                    <div class="token-chart-inner">
-
-                                        <div class="token-chart-number">
-                                            ${burnedPercentage.toFixed(2)}%
-                                        </div>
-
-                                        <div class="token-chart-label">
-                                            已銷毀
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div class="col-md-7">
-
-                                <div class="mb-4">
-
-                                    <div class="text-secondary">
-                                        🪙 初始供應量
-                                    </div>
-
-                                    <div class="stat-number text-white">
-                                        ${INITIAL_SUPPLY.toLocaleString()} 枚
-                                    </div>
-
-                                </div>
-
-                                <div class="mb-4">
-
-                                    <div class="text-secondary">
-                                        💰 目前供應量
-                                    </div>
-
-                                    <div class="stat-number text-success">
-                                        ${currentSupply.toLocaleString()} 枚
-                                    </div>
-
-                                </div>
-
-                                <div class="mb-4">
-
-                                    <div class="text-secondary">
-                                        🔥 累計銷毀量
-                                    </div>
-
-                                    <div class="stat-number text-danger">
-                                        ${burnedAmount.toLocaleString()} 枚
-                                    </div>
-
-                                </div>
-
-                                <div>
-
-                                    <div class="d-flex justify-content-between mb-1">
-
-                                        <span class="text-secondary">
-                                            Supply
-                                        </span>
-
-                                        <span class="text-success">
-                                            ${supplyPercentage.toFixed(2)}%
-                                        </span>
-
-                                    </div>
-
-                                    <div
-                                        class="progress"
-                                        style="height: 12px;"
-                                    >
-
-                                        <div
-                                            class="progress-bar bg-success"
-                                            role="progressbar"
-                                            style="width: ${supplyPercentage}%"
-                                        ></div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     Mint Address
-                ======================================== -->
-
-                <div class="card custom-card shadow-sm mb-4">
-
-                    <div class="card-body">
-
-                        <h5 class="card-title text-info">
-                            🪙 代幣合約地址 (Mint Address)
-                        </h5>
-
-                        <code class="text-break fs-5 text-warning">
-                            ${MINT_ADDRESS}
-                        </code>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     參與者
-                ======================================== -->
-
-                <div class="card custom-card shadow-sm">
-
-                    <div
-                        class="card-header bg-transparent py-3 border-bottom border-secondary"
-                    >
-
-                        <h5 class="m-0 fw-bold text-white">
-                            📋 參與者領取紀錄與狀態
-                        </h5>
-
-                    </div>
-
-                    <div class="card-body p-0">
-
-                        <div class="table-responsive">
-
-                            <table
-                                class="table table-hover mb-0 align-middle table-dark-custom"
-                            >
-
-                                <thead>
-
-                                    <tr class="text-secondary">
-
-                                        <th>
-                                            Solana 錢包地址
-                                        </th>
-
-                                        <th>
-                                            已領取次數
-                                        </th>
-
-                                        <th>
-                                            鏈上瀏覽器
-                                        </th>
-
-                                    </tr>
-
-                                </thead>
-
-                                <tbody>
-
-                                    ${
-                                        historyRows ||
-                                        `
-                                        <tr>
-                                            <td
-                                                colspan="3"
-                                                class="text-center py-4 text-muted"
-                                            >
-                                                目前尚無領取紀錄
-                                            </td>
-                                        </tr>
-                                        `
-                                    }
-
-                                </tbody>
-
-                            </table>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     最近空投
-                ======================================== -->
-
-                <div class="card custom-card shadow-sm mt-4">
-
-                    <div
-                        class="card-header bg-transparent py-3 border-bottom border-secondary"
-                    >
-
-                        <h5 class="m-0 fw-bold text-white">
-                            📜 最近空投交易
-                        </h5>
-
-                    </div>
-
-                    <div class="card-body p-0">
-
-                        <div class="table-responsive">
-
-                            <table
-                                class="table table-hover mb-0 align-middle table-dark-custom"
-                            >
-
-                                <thead>
-
-                                    <tr class="text-secondary">
-
-                                        <th>時間</th>
-                                        <th>錢包</th>
-                                        <th>空投數量</th>
-                                        <th>狀態</th>
-                                        <th>交易</th>
-
-                                    </tr>
-
-                                </thead>
-
-                                <tbody>
-
-                                    ${
-                                        transactionRows ||
-                                        `
-                                        <tr>
-                                            <td
-                                                colspan="5"
-                                                class="text-center py-4 text-muted"
-                                            >
-                                                目前尚無空投交易
-                                            </td>
-                                        </tr>
-                                        `
-                                    }
-
-                                </tbody>
-
-                            </table>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     最近 Burn
-                ======================================== -->
-
-                <div class="card custom-card shadow-sm mt-4">
-
-                    <div
-                        class="card-header bg-transparent py-3 border-bottom border-secondary"
-                    >
-
-                        <h5 class="m-0 fw-bold text-white">
-                            🔥 最近代幣銷毀
-                        </h5>
-
-                    </div>
-
-                    <div class="card-body p-0">
-
-                        <div class="table-responsive">
-
-                            <table
-                                class="table table-hover mb-0 align-middle table-dark-custom"
-                            >
-
-                                <thead>
-
-                                    <tr class="text-secondary">
-
-                                        <th>時間</th>
-                                        <th>銷毀數量</th>
-                                        <th>狀態</th>
-                                        <th>交易</th>
-
-                                    </tr>
-
-                                </thead>
-
-                                <tbody>
-
-                                    ${
-                                        burnTransactionRows ||
-                                        `
-                                        <tr>
-                                            <td
-                                                colspan="4"
-                                                class="text-center py-4 text-muted"
-                                            >
-                                                目前尚無 Burn 交易
-                                            </td>
-                                        </tr>
-                                        `
-                                    }
-
-                                </tbody>
-
-                            </table>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================
-                     Footer
-                ======================================== -->
-
-                <footer
-                    class="text-center mt-4 text-secondary small"
+                    ➤
+                    &nbsp;
+                    開啟 Telegram 機器人
+                    &nbsp; →
+                </a>
+
+                <a
+                    href="https://explorer.solana.com/address/${MINT_ADDRESS}?cluster=devnet"
+                    target="_blank"
+                    class="hero-btn hero-btn-secondary"
                 >
-
-                    <p>
-                        正修科技大學資訊工程系 |
-                        畢業專題展示系統
-                    </p>
-
-                </footer>
+                    🔗
+                    &nbsp;
+                    查看區塊鏈瀏覽器
+                </a>
 
             </div>
 
-        </body>
+        </div>
 
-        </html>
-        `;
+    </section>
+
+    <!-- ========================================
+         ANNOUNCEMENT
+    ======================================== -->
+
+    <section class="announcement">
+
+        <div>
+
+            <div class="announcement-title">
+
+                <span>
+                    📢
+                </span>
+
+                系統公告
+
+            </div>
+
+            <div class="announcement-text">
+
+                <span style="color:#25e4a8;">
+                    ●
+                </span>
+
+                系統目前正常運行，暫無重要公告。
+
+            </div>
+
+        </div>
+
+        <div class="announcement-time">
+
+            最後更新：
+            ${new Date().toLocaleString(
+                'zh-TW',
+                {
+                    timeZone:
+                        'Asia/Taipei'
+                }
+            )}
+
+        </div>
+
+    </section>
+
+    <!-- ========================================
+         STATS
+    ======================================== -->
+
+    <section
+        class="stats-grid"
+        id="statistics"
+    >
+
+        <!-- WhiteList -->
+
+        <div class="stat-card stat-blue">
+
+            <div class="stat-top">
+
+                <div class="stat-icon">
+                    👥
+                </div>
+
+                <div>
+
+                    <div class="stat-label">
+                        白名單總人數
+                    </div>
+
+                    <div class="stat-number">
+                        ${whitelist.length}
+                    </div>
+
+                    <div class="stat-en">
+                        Total Whitelist
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="stat-change">
+                ↑ +0
+            </div>
+
+        </div>
+
+        <!-- Airdrop -->
+
+        <div class="stat-card stat-purple">
+
+            <div class="stat-top">
+
+                <div class="stat-icon">
+                    🎁
+                </div>
+
+                <div>
+
+                    <div class="stat-label">
+                        總空投發放次數
+                    </div>
+
+                    <div class="stat-number">
+                        ${totalAirdropCount}
+                    </div>
+
+                    <div class="stat-en">
+                        Total Airdropped
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="stat-change">
+                ↑ +0
+            </div>
+
+        </div>
+
+        <!-- Supply -->
+
+        <div class="stat-card stat-green">
+
+            <div class="stat-top">
+
+                <div class="stat-icon">
+                    ▱
+                </div>
+
+                <div>
+
+                    <div class="stat-label">
+                        鏈上即時剩餘總數量
+                    </div>
+
+                    <div class="stat-number">
+                        ${currentSupply.toLocaleString()}
+                    </div>
+
+                    <div class="stat-en">
+                        Token Supply
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="stat-change">
+                ↑ +0
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================
+         SUPPLY + MINT
+    ======================================== -->
+
+    <section class="section-grid">
+
+        <!-- Supply -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-title-icon">
+                        ◉
+                    </span>
+
+                    Token Supply 統計
+
+                </div>
+
+            </div>
+
+            <div class="panel-body">
+
+                <div class="supply-layout">
+
+                    <div>
+
+                        <div class="donut">
+
+                            <div class="donut-content">
+
+                                <div class="donut-number">
+                                    ${burnedPercentage.toFixed(2)}%
+                                </div>
+
+                                <div class="donut-label">
+                                    已銷毀
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="supply-list">
+
+                        <div class="supply-row">
+
+                            <div class="supply-name">
+                                🪙 初始供應量
+                            </div>
+
+                            <div class="supply-value">
+                                ${INITIAL_SUPPLY.toLocaleString()}
+                            </div>
+
+                        </div>
+
+                        <div class="supply-row">
+
+                            <div class="supply-name">
+                                🟢 目前供應量
+                            </div>
+
+                            <div class="supply-value green">
+                                ${currentSupply.toLocaleString()}
+                            </div>
+
+                        </div>
+
+                        <div class="supply-row">
+
+                            <div class="supply-name">
+                                🔥 累計銷毀量
+                            </div>
+
+                            <div class="supply-value red">
+                                ${burnedAmount.toLocaleString()}
+                            </div>
+
+                        </div>
+
+                        <div>
+
+                            <div
+                                style="
+                                    display:flex;
+                                    justify-content:space-between;
+                                    color:#8093b7;
+                                    font-size:12px;
+                                "
+                            >
+
+                                <span>
+                                    Supply（剩餘）
+                                </span>
+
+                                <span
+                                    style="color:#27e1ab;"
+                                >
+                                    ${supplyPercentage.toFixed(2)}%
+                                </span>
+
+                            </div>
+
+                            <div class="progress-track">
+
+                                <div
+                                    class="progress-value"
+                                    style="
+                                        width:${supplyPercentage}%;
+                                    "
+                                ></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Mint -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-title-icon">
+                        ◎
+                    </span>
+
+                    代幣合約地址
+                    (Mint Address)
+
+                </div>
+
+            </div>
+
+            <div class="panel-body">
+
+                <div class="mint-address">
+                    ${MINT_ADDRESS}
+                </div>
+
+                <a
+                    href="https://explorer.solana.com/address/${MINT_ADDRESS}?cluster=devnet"
+                    target="_blank"
+                    class="explorer-button"
+                >
+                    ◎
+                    &nbsp;
+                    在 Solana Explorer 中查看
+                    ↗
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================
+         TABLES
+    ======================================== -->
+
+    <section
+        class="tables-grid"
+        id="records"
+    >
+
+        <!-- Participants -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-title-icon">
+                        ◉
+                    </span>
+
+                    參與者領取紀錄與狀態
+
+                </div>
+
+            </div>
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                錢包地址
+                            </th>
+
+                            <th>
+                                已領取
+                            </th>
+
+                            <th>
+                                狀態
+                            </th>
+
+                            <th>
+                                操作
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${
+                            historyRows ||
+                            `
+                            <tr>
+                                <td
+                                    colspan="4"
+                                    style="
+                                        text-align:center;
+                                        color:#667b9e;
+                                        padding:30px;
+                                    "
+                                >
+                                    目前尚無領取紀錄
+                                </td>
+                            </tr>
+                            `
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Airdrops -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-title-icon">
+                        🎁
+                    </span>
+
+                    最近空投交易
+
+                </div>
+
+            </div>
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                時間
+                            </th>
+
+                            <th>
+                                錢包
+                            </th>
+
+                            <th>
+                                數量
+                            </th>
+
+                            <th>
+                                狀態
+                            </th>
+
+                            <th>
+                                交易
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${
+                            transactionRows ||
+                            `
+                            <tr>
+                                <td
+                                    colspan="5"
+                                    style="
+                                        text-align:center;
+                                        color:#667b9e;
+                                        padding:30px;
+                                    "
+                                >
+                                    目前尚無空投交易
+                                </td>
+                            </tr>
+                            `
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <!-- Burn -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <span class="panel-title-icon">
+                        🔥
+                    </span>
+
+                    最近代幣銷毀
+
+                </div>
+
+            </div>
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                時間
+                            </th>
+
+                            <th>
+                                銷毀數量
+                            </th>
+
+                            <th>
+                                狀態
+                            </th>
+
+                            <th>
+                                交易
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${
+                            burnRows ||
+                            `
+                            <tr>
+                                <td
+                                    colspan="4"
+                                    style="
+                                        text-align:center;
+                                        color:#667b9e;
+                                        padding:30px;
+                                    "
+                                >
+                                    目前尚無 Burn 交易
+                                </td>
+                            </tr>
+                            `
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================
+         ABOUT
+    ======================================== -->
+
+    <section
+        class="panel"
+        id="about"
+        style="margin-top:18px;"
+    >
+
+        <div class="panel-header">
+
+            <div class="panel-title">
+
+                <span class="panel-title-icon">
+                    ✦
+                </span>
+
+                關於創世版權
+
+            </div>
+
+        </div>
+
+        <div class="panel-body">
+
+            <p
+                style="
+                    color:#a7b6cf;
+                    line-height:1.9;
+                    margin:0;
+                    font-size:13px;
+                "
+            >
+
+                創世版權（GENESIS COPYRIGHT）
+                為基於 Solana 區塊鏈所建立的數位版權管理展示系統，
+                透過區塊鏈技術記錄代幣、空投與銷毀資訊，
+                展示數位資產與版權管理的實際應用。
+
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================
+         FOOTER
+    ======================================== -->
+
+    <footer class="footer">
+
+        <div>
+            © 2026 創世版權 Genesis Copyright.
+            正修科技大學資訊工程系畢業專題展示系統
+        </div>
+
+        <div>
+            Built on Solana
+            &nbsp;∞&nbsp;
+            For a more open creative future.
+        </div>
+
+    </footer>
+
+</main>
+
+</body>
+
+</html>
+`;
 
         res.send(html);
 
@@ -1327,7 +2781,7 @@ app.get('/', async (req, res) => {
 });
 
 // ========================================
-// 啟動伺服器
+// 啟動
 // ========================================
 
 app.listen(PORT, () => {
@@ -1337,15 +2791,14 @@ app.listen(PORT, () => {
     );
 
     console.log(
-        '🌐 網頁版儀表板已成功啟動！'
+        '🌐 Genesis Copyright Dashboard 已啟動'
     );
 
     console.log(
-        `👉 請在瀏覽器輸入: http://localhost:${PORT}`
+        `👉 http://localhost:${PORT}`
     );
 
     console.log(
         '=================================================='
     );
-
 });
