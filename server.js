@@ -3,7 +3,11 @@ require('@dotenvx/dotenvx').config({ path: 'password.env' });
 
 const express = require('express');
 const { neon } = require('@neondatabase/serverless');
-const { Connection, PublicKey, clusterApiUrl } = require('@solana/web3.js');
+const {
+    Connection,
+    PublicKey,
+    clusterApiUrl
+} = require('@solana/web3.js');
 const { getMint } = require('@solana/spl-token');
 
 const app = express();
@@ -230,10 +234,10 @@ app.get('/', async (req, res) => {
         for (const transaction of transactions) {
 
             const date = new Date(
-    transaction.created_at
-).toLocaleString('zh-TW', {
-    timeZone: 'Asia/Taipei'
-});
+                transaction.created_at
+            ).toLocaleString('zh-TW', {
+                timeZone: 'Asia/Taipei'
+            });
 
             const shortAddress =
                 transaction.wallet_address.slice(0, 8) +
@@ -393,6 +397,23 @@ app.get('/', async (req, res) => {
                     </div>
 
                 </header>
+
+                <!-- 系統公告 -->
+
+                <div
+                    class="alert alert-success shadow-sm mb-4"
+                    role="alert"
+                >
+
+                    <h5 class="alert-heading fw-bold">
+                        📢 系統公告
+                    </h5>
+
+                    <p class="mb-0">
+                        🟢 系統目前正常運行，暫無重要公告。
+                    </p>
+
+                </div>
 
                 <!-- 數據卡片區 -->
 
