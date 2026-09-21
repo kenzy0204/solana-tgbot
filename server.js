@@ -566,7 +566,7 @@ app.get('/', async (req, res) => {
                     <div class="mt-2 mt-md-0">
 
                         <a
-                            href="https://t.me/你的Telegram機器人名稱"
+                            href="https://t.me/專題空投"
                             target="_blank"
                             class="btn btn-outline-info fw-bold"
                         >
