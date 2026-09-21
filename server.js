@@ -34,9 +34,7 @@ const INITIAL_SUPPLY = 1000000000;
 // ========================================
 
 async function getWhitelist() {
-
     try {
-
         const rows = await sql`
             SELECT address
             FROM whitelist
@@ -45,7 +43,6 @@ async function getWhitelist() {
         return rows.map(row => row.address);
 
     } catch (error) {
-
         console.error(
             '❌ 讀取白名單失敗：',
             error.message
@@ -60,9 +57,7 @@ async function getWhitelist() {
 // ========================================
 
 async function getHistory() {
-
     try {
-
         const rows = await sql`
             SELECT address, count
             FROM airdrop_history
@@ -71,15 +66,12 @@ async function getHistory() {
         const history = {};
 
         for (const row of rows) {
-
-            history[row.address] =
-                Number(row.count);
+            history[row.address] = Number(row.count);
         }
 
         return history;
 
     } catch (error) {
-
         console.error(
             '❌ 讀取空投紀錄失敗：',
             error.message
@@ -94,9 +86,7 @@ async function getHistory() {
 // ========================================
 
 async function getTransactions() {
-
     try {
-
         const rows = await sql`
             SELECT
                 id,
@@ -113,7 +103,6 @@ async function getTransactions() {
         return rows;
 
     } catch (error) {
-
         console.error(
             '❌ 讀取空投交易紀錄失敗：',
             error.message
@@ -128,9 +117,7 @@ async function getTransactions() {
 // ========================================
 
 async function getBurnTransactions() {
-
     try {
-
         const rows = await sql`
             SELECT
                 id,
@@ -146,7 +133,6 @@ async function getBurnTransactions() {
         return rows;
 
     } catch (error) {
-
         console.error(
             '❌ 讀取 Burn 交易紀錄失敗：',
             error.message
@@ -161,11 +147,8 @@ async function getBurnTransactions() {
 // ========================================
 
 async function getCurrentSupply() {
-
     try {
-
         if (!MINT_ADDRESS) {
-
             return INITIAL_SUPPLY;
         }
 
@@ -182,7 +165,6 @@ async function getCurrentSupply() {
             (10 ** mintInfo.decimals);
 
     } catch (error) {
-
         console.log(
             '⚠️ 無法取得鏈上供應量：',
             error.message
@@ -197,9 +179,7 @@ async function getCurrentSupply() {
 // ========================================
 
 app.get('/api/stats', async (req, res) => {
-
     try {
-
         const whitelist =
             await getWhitelist();
 
@@ -214,7 +194,6 @@ app.get('/api/stats', async (req, res) => {
         for (
             const count of Object.values(history)
         ) {
-
             totalAirdropCount +=
                 Number(count);
         }
@@ -232,7 +211,6 @@ app.get('/api/stats', async (req, res) => {
             100;
 
         res.json({
-
             whitelistCount:
                 whitelist.length,
 
@@ -252,14 +230,12 @@ app.get('/api/stats', async (req, res) => {
         });
 
     } catch (error) {
-
         console.error(
             '❌ stats API 發生錯誤：',
             error.message
         );
 
         res.status(500).json({
-
             error:
                 '無法取得即時統計資料'
         });
@@ -271,9 +247,7 @@ app.get('/api/stats', async (req, res) => {
 // ========================================
 
 app.get('/', async (req, res) => {
-
     try {
-
         const whitelist =
             await getWhitelist();
 
@@ -321,7 +295,6 @@ app.get('/', async (req, res) => {
         for (
             const count of Object.values(history)
         ) {
-
             totalAirdropCount +=
                 Number(count);
         }
@@ -331,7 +304,6 @@ app.get('/', async (req, res) => {
         // ========================================
 
         function formatDate(date) {
-
             return new Date(date)
                 .toLocaleString(
                     'zh-TW',
@@ -347,7 +319,6 @@ app.get('/', async (req, res) => {
         // ========================================
 
         function shortAddress(address) {
-
             if (!address) {
                 return '-';
             }
@@ -369,14 +340,6 @@ app.get('/', async (req, res) => {
             const [address, count]
             of Object.entries(history)
         ) {
-
-            const remaining =
-                Math.max(
-                    3 -
-                    Number(count),
-                    0
-                );
-
             let badgeClass =
                 'available';
 
@@ -384,7 +347,6 @@ app.get('/', async (req, res) => {
                 '可領取';
 
             if (Number(count) >= 3) {
-
                 badgeClass =
                     'limit';
 
@@ -392,7 +354,6 @@ app.get('/', async (req, res) => {
                     '已達上限';
 
             } else if (Number(count) >= 2) {
-
                 badgeClass =
                     'warning';
 
@@ -401,15 +362,12 @@ app.get('/', async (req, res) => {
             }
 
             historyRows += `
-
                 <tr>
 
                     <td class="wallet-cell">
-
                         <span>
                             ${shortAddress(address)}
                         </span>
-
                     </td>
 
                     <td>
@@ -417,17 +375,14 @@ app.get('/', async (req, res) => {
                     </td>
 
                     <td>
-
                         <span
                             class="status-badge ${badgeClass}"
                         >
                             ${badgeText}
                         </span>
-
                     </td>
 
                     <td>
-
                         <a
                             href="https://explorer.solana.com/address/${address}?cluster=devnet"
                             target="_blank"
@@ -435,7 +390,6 @@ app.get('/', async (req, res) => {
                         >
                             查看 ↗
                         </a>
-
                     </td>
 
                 </tr>
@@ -452,14 +406,12 @@ app.get('/', async (req, res) => {
             const transaction
             of transactions
         ) {
-
             const statusClass =
                 transaction.status === 'success'
                     ? 'success'
                     : 'failed';
 
             transactionRows += `
-
                 <tr>
 
                     <td>
@@ -481,7 +433,6 @@ app.get('/', async (req, res) => {
                     </td>
 
                     <td>
-
                         <span
                             class="status-badge ${statusClass}"
                         >
@@ -491,11 +442,9 @@ app.get('/', async (req, res) => {
                                     : '失敗'
                             }
                         </span>
-
                     </td>
 
                     <td>
-
                         <a
                             href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
                             target="_blank"
@@ -503,7 +452,6 @@ app.get('/', async (req, res) => {
                         >
                             查看 ↗
                         </a>
-
                     </td>
 
                 </tr>
@@ -520,14 +468,12 @@ app.get('/', async (req, res) => {
             const transaction
             of burnTransactions
         ) {
-
             const statusClass =
                 transaction.status === 'success'
                     ? 'success'
                     : 'failed';
 
             burnRows += `
-
                 <tr>
 
                     <td>
@@ -537,15 +483,12 @@ app.get('/', async (req, res) => {
                     </td>
 
                     <td>
-
                         ${Number(
                             transaction.amount
                         ).toLocaleString()}
-
                     </td>
 
                     <td>
-
                         <span
                             class="status-badge ${statusClass}"
                         >
@@ -555,11 +498,9 @@ app.get('/', async (req, res) => {
                                     : '失敗'
                             }
                         </span>
-
                     </td>
 
                     <td>
-
                         <a
                             href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
                             target="_blank"
@@ -567,7 +508,6 @@ app.get('/', async (req, res) => {
                         >
                             查看 ↗
                         </a>
-
                     </td>
 
                 </tr>
@@ -615,6 +555,10 @@ app.get('/', async (req, res) => {
 
 * {
     box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
 }
 
 body {
@@ -692,7 +636,9 @@ body {
     text-decoration: none;
 }
 
-.brand-mark {
+/* 新版簡潔 Logo */
+
+.brand-symbol {
 
     width: 42px;
 
@@ -700,15 +646,30 @@ body {
 
     border-radius: 12px;
 
-    object-fit: cover;
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    color: #f2d58b;
+
+    font-size: 22px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #1a1730,
+            #0b1225
+        );
 
     border:
         1px solid
-        rgba(255, 206, 111, 0.45);
+        rgba(242, 213, 139, 0.45);
 
     box-shadow:
         0 0 18px
-        rgba(255, 192, 72, 0.18);
+        rgba(242, 213, 139, 0.12);
 }
 
 .brand-text {
@@ -876,7 +837,8 @@ body {
         1px solid
         rgba(93, 134, 229, .25);
 
-    border-radius: 0 0 18px 18px;
+    border-radius:
+        0 0 18px 18px;
 
     background-image:
 
@@ -889,9 +851,11 @@ body {
 
         url('/genesis-copyright-hero.png');
 
-    background-size: cover;
+    background-size:
+        cover;
 
-    background-position: center;
+    background-position:
+        center;
 
     box-shadow:
         0 30px 80px
@@ -912,7 +876,7 @@ body {
 
         linear-gradient(
             180deg,
-            transparent 65%,
+            transparent 60%,
             rgba(2, 6, 17, .78) 100%
         );
 }
@@ -937,18 +901,11 @@ body {
         65px 0 65px 62px;
 }
 
-.hero-kicker {
-
-    margin-bottom: 15px;
-
-    color: #d8dff0;
-
-    font-size: 12px;
-
-    letter-spacing: 6px;
-
-    font-weight: 600;
-}
+/*
+   注意：
+   已移除 BUILD · CREATE · OWN
+   ON SOLANA
+*/
 
 .hero-title {
 
@@ -1166,6 +1123,8 @@ body {
     color: #8294b4;
 
     font-size: 12px;
+
+    white-space: nowrap;
 }
 
 /* ========================================
@@ -1663,6 +1622,12 @@ body {
         rgba(88, 129, 196, .45);
 
     font-size: 13px;
+
+    display: block;
+
+    transition:
+        background .2s ease,
+        border-color .2s ease;
 }
 
 .explorer-button:hover {
@@ -1671,6 +1636,9 @@ body {
 
     background:
         rgba(23, 52, 94, .8);
+
+    border-color:
+        rgba(108, 153, 225, .7);
 }
 
 /* ========================================
@@ -1821,6 +1789,112 @@ tr:hover td {
 }
 
 /* ========================================
+   About
+======================================== */
+
+.about-panel {
+
+    margin-top: 18px;
+
+    background:
+        linear-gradient(
+            110deg,
+            rgba(8, 21, 46, .92),
+            rgba(5, 15, 34, .82)
+        );
+}
+
+.about-content {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 35px;
+
+    padding:
+        22px 24px;
+}
+
+.about-copy {
+
+    max-width: 900px;
+}
+
+.about-label {
+
+    margin-bottom: 7px;
+
+    color: #6e91c8;
+
+    font-size: 10px;
+
+    letter-spacing: 3px;
+
+    font-weight: 700;
+}
+
+.about-title {
+
+    margin: 0 0 8px;
+
+    color: #fff;
+
+    font-size: 19px;
+
+    font-weight: 800;
+}
+
+.about-text {
+
+    margin: 0;
+
+    color: #93a5c4;
+
+    line-height: 1.8;
+
+    font-size: 13px;
+}
+
+.about-mark {
+
+    flex-shrink: 0;
+
+    width: 58px;
+
+    height: 58px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 16px;
+
+    color: #f2d58b;
+
+    font-size: 27px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(30, 28, 55, .9),
+            rgba(9, 17, 35, .9)
+        );
+
+    border:
+        1px solid
+        rgba(242, 213, 139, .32);
+
+    box-shadow:
+        0 0 24px
+        rgba(242, 213, 139, .08);
+}
+
+/* ========================================
    Footer
 ======================================== */
 
@@ -1833,11 +1907,16 @@ tr:hover td {
     align-items: center;
 
     padding:
-        25px 5px;
+        24px 5px 5px;
 
     color: #596d91;
 
     font-size: 11px;
+}
+
+.footer-right {
+
+    text-align: right;
 }
 
 /* ========================================
@@ -1866,6 +1945,11 @@ tr:hover td {
 
         grid-template-columns:
             1fr;
+    }
+
+    .about-content {
+
+        align-items: flex-start;
     }
 }
 
@@ -1900,6 +1984,11 @@ tr:hover td {
             8px 0;
 
         white-space: nowrap;
+    }
+
+    .network-status {
+
+        margin-left: auto;
     }
 
     .dashboard {
@@ -1972,11 +2061,38 @@ tr:hover td {
             1fr;
     }
 
+    .announcement {
+
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .announcement-time {
+
+        white-space: normal;
+    }
+
+    .about-content {
+
+        flex-direction: column;
+    }
+
+    .about-mark {
+
+        display: none;
+    }
+
     .footer {
 
         flex-direction: column;
 
         gap: 8px;
+
+        text-align: center;
+    }
+
+    .footer-right {
 
         text-align: center;
     }
@@ -1999,11 +2115,9 @@ tr:hover td {
         class="brand"
     >
 
-        <img
-            src="/genesis-copyright-hero.png"
-            class="brand-mark"
-            alt="Genesis Copyright"
-        >
+        <div class="brand-symbol">
+            ◎
+        </div>
 
         <div class="brand-text">
 
@@ -2072,12 +2186,6 @@ tr:hover td {
     <section class="hero">
 
         <div class="hero-content">
-
-            <div class="hero-kicker">
-                BUILD · CREATE · OWN
-                <br>
-                ON SOLANA
-            </div>
 
             <h1 class="hero-title">
                 創世版權
@@ -2265,11 +2373,11 @@ tr:hover td {
                     </div>
 
                     <div class="stat-number">
-                        ${currentSupply.toLocaleString()}
+                        ${(currentSupply / 1000000).toFixed(2)}M
                     </div>
 
                     <div class="stat-en">
-                        Token Supply
+                        ${currentSupply.toLocaleString()} TOKEN SUPPLY
                     </div>
 
                 </div>
@@ -2477,7 +2585,7 @@ tr:hover td {
                         ◉
                     </span>
 
-                    參與者領取紀錄與狀態
+                    參與者 PARTICIPANTS
 
                 </div>
 
@@ -2551,7 +2659,7 @@ tr:hover td {
                         🎁
                     </span>
 
-                    最近空投交易
+                    最近空投 AIRDROP ACTIVITY
 
                 </div>
 
@@ -2629,7 +2737,7 @@ tr:hover td {
                         🔥
                     </span>
 
-                    最近代幣銷毀
+                    最近銷毀 BURN ACTIVITY
 
                 </div>
 
@@ -2698,42 +2806,33 @@ tr:hover td {
     ======================================== -->
 
     <section
-        class="panel"
+        class="panel about-panel"
         id="about"
-        style="margin-top:18px;"
     >
 
-        <div class="panel-header">
+        <div class="about-content">
 
-            <div class="panel-title">
+            <div class="about-copy">
 
-                <span class="panel-title-icon">
-                    ✦
-                </span>
+                <div class="about-label">
+                    ABOUT PROJECT
+                </div>
 
-                關於創世版權
+                <h2 class="about-title">
+                    創世版權 · GENESIS COPYRIGHT
+                </h2>
+
+                <p class="about-text">
+                    基於 Solana 區塊鏈的數位版權管理展示系統，
+                    透過區塊鏈記錄代幣、空投與銷毀資訊，
+                    展示數位資產與版權管理的實際應用。
+                </p>
 
             </div>
 
-        </div>
-
-        <div class="panel-body">
-
-            <p
-                style="
-                    color:#a7b6cf;
-                    line-height:1.9;
-                    margin:0;
-                    font-size:13px;
-                "
-            >
-
-                創世版權（GENESIS COPYRIGHT）
-                為基於 Solana 區塊鏈所建立的數位版權管理展示系統，
-                透過區塊鏈技術記錄代幣、空投與銷毀資訊，
-                展示數位資產與版權管理的實際應用。
-
-            </p>
+            <div class="about-mark">
+                ✦
+            </div>
 
         </div>
 
@@ -2750,7 +2849,7 @@ tr:hover td {
             正修科技大學資訊工程系畢業專題展示系統
         </div>
 
-        <div>
+        <div class="footer-right">
             Built on Solana
             &nbsp;∞&nbsp;
             For a more open creative future.
