@@ -566,7 +566,7 @@ app.get('/', async (req, res) => {
                     <div class="mt-2 mt-md-0">
 
                         <a
-                            href="https://t.me/ csu41218163bot"
+                            href="https://t.me/csu41218163bot"
                             target="_blank"
                             class="btn btn-outline-info fw-bold"
                         >
