@@ -40,7 +40,6 @@ async function getWhitelist() {
             '❌ 讀取白名單失敗：',
             error.message
         );
-
         return [];
     }
 }
@@ -63,7 +62,6 @@ async function getHistory() {
         }
 
         return history;
-
     } catch (error) {
         console.error(
             '❌ 讀取空投紀錄失敗：',
@@ -100,7 +98,35 @@ async function getTransactions() {
             '❌ 讀取空投交易紀錄失敗：',
             error.message
         );
+        return [];
+    }
+}
 
+// ========================================
+// 從 Neon 讀取最近 Burn 交易紀錄
+// ========================================
+
+async function getBurnTransactions() {
+    try {
+        const rows = await sql`
+            SELECT
+                id,
+                amount,
+                tx_signature,
+                status,
+                created_at
+            FROM burn_transactions
+            ORDER BY created_at DESC
+            LIMIT 10
+        `;
+
+        return rows;
+
+    } catch (error) {
+        console.error(
+            '❌ 讀取 Burn 交易紀錄失敗：',
+            error.message
+        );
         return [];
     }
 }
@@ -183,17 +209,18 @@ app.get('/', async (req, res) => {
         const whitelist = await getWhitelist();
         const history = await getHistory();
         const transactions = await getTransactions();
+        const burnTransactions = await getBurnTransactions();
 
         let totalAirdropCount = 0;
         let historyRows = '';
         let transactionRows = '';
+        let burnTransactionRows = '';
 
         // ========================================
         // 參與者領取紀錄
         // ========================================
 
         for (const [address, count] of Object.entries(history)) {
-
             totalAirdropCount += Number(count);
 
             historyRows += `
@@ -279,6 +306,58 @@ app.get('/', async (req, res) => {
                             href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
                             target="_blank"
                             class="btn btn-sm btn-outline-info"
+                        >
+                            ${shortTx}
+                        </a>
+                    </td>
+
+                </tr>
+            `;
+        }
+
+        // ========================================
+        // 最近 Burn 交易紀錄
+        // ========================================
+
+        for (const transaction of burnTransactions) {
+
+            const date = new Date(
+                transaction.created_at
+            ).toLocaleString('zh-TW', {
+                timeZone: 'Asia/Taipei'
+            });
+
+            const shortTx =
+                transaction.tx_signature.slice(0, 10) +
+                '...' +
+                transaction.tx_signature.slice(-8);
+
+            burnTransactionRows += `
+                <tr class="text-white">
+
+                    <td>
+                        ${date}
+                    </td>
+
+                    <td>
+                        ${Number(transaction.amount).toLocaleString()} 枚
+                    </td>
+
+                    <td>
+                        <span class="badge ${
+                            transaction.status === 'success'
+                                ? 'bg-success'
+                                : 'bg-danger'
+                        }">
+                            ${transaction.status}
+                        </span>
+                    </td>
+
+                    <td>
+                        <a
+                            href="https://explorer.solana.com/tx/${transaction.tx_signature}?cluster=devnet"
+                            target="_blank"
+                            class="btn btn-sm btn-outline-danger"
                         >
                             ${shortTx}
                         </a>
@@ -378,6 +457,7 @@ app.get('/', async (req, res) => {
                             </span>
 
                             |
+
                             畫面每 10 秒自動更新
 
                         </p>
@@ -547,12 +627,14 @@ app.get('/', async (req, res) => {
                                         historyRows ||
                                         `
                                         <tr>
+
                                             <td
                                                 colspan="3"
                                                 class="text-center py-4 text-muted"
                                             >
                                                 目前尚無領取紀錄
                                             </td>
+
                                         </tr>
                                         `
                                     }
@@ -623,12 +705,88 @@ app.get('/', async (req, res) => {
                                         transactionRows ||
                                         `
                                         <tr>
+
                                             <td
                                                 colspan="5"
                                                 class="text-center py-4 text-muted"
                                             >
                                                 目前尚無空投交易
                                             </td>
+
+                                        </tr>
+                                        `
+                                    }
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- 最近 Burn 交易 -->
+
+                <div class="card custom-card shadow-sm mt-4">
+
+                    <div
+                        class="card-header bg-transparent py-3 border-bottom border-secondary"
+                    >
+
+                        <h5 class="m-0 fw-bold text-white">
+                            🔥 最近代幣銷毀
+                        </h5>
+
+                    </div>
+
+                    <div class="card-body p-0">
+
+                        <div class="table-responsive">
+
+                            <table
+                                class="table table-hover mb-0 align-middle table-dark-custom"
+                            >
+
+                                <thead>
+
+                                    <tr class="text-secondary">
+
+                                        <th>
+                                            時間
+                                        </th>
+
+                                        <th>
+                                            銷毀數量
+                                        </th>
+
+                                        <th>
+                                            狀態
+                                        </th>
+
+                                        <th>
+                                            交易
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    ${
+                                        burnTransactionRows ||
+                                        `
+                                        <tr>
+
+                                            <td
+                                                colspan="4"
+                                                class="text-center py-4 text-muted"
+                                            >
+                                                目前尚無 Burn 交易
+                                            </td>
+
                                         </tr>
                                         `
                                     }
