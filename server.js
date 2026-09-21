@@ -230,8 +230,10 @@ app.get('/', async (req, res) => {
         for (const transaction of transactions) {
 
             const date = new Date(
-                transaction.created_at
-            ).toLocaleString('zh-TW');
+    transaction.created_at
+).toLocaleString('zh-TW', {
+    timeZone: 'Asia/Taipei'
+});
 
             const shortAddress =
                 transaction.wallet_address.slice(0, 8) +
