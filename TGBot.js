@@ -5,10 +5,12 @@ const {
     PublicKey,
     clusterApiUrl
 } = require('@solana/web3.js');
+
 const {
     getOrCreateAssociatedTokenAccount,
     transfer
 } = require('@solana/spl-token');
+
 const bs58 = require('bs58');
 
 const { neon } = require('@neondatabase/serverless');
@@ -74,6 +76,7 @@ async function getWhitelist() {
         `;
 
         return rows.map(row => row.address);
+
     } catch (error) {
         console.error('❌ 讀取白名單失敗：', error.message);
         return [];
@@ -98,6 +101,7 @@ async function getHistory() {
         }
 
         return history;
+
     } catch (error) {
         console.error('❌ 讀取空投紀錄失敗：', error.message);
         return {};
@@ -368,6 +372,25 @@ bot.on('text', async (ctx) => {
             ON CONFLICT (address)
             DO UPDATE SET
                 count = airdrop_history.count + 1
+        `;
+
+        // ========================================
+        // 新增：空投交易紀錄
+        // ========================================
+
+        await sql`
+            INSERT INTO airdrop_transactions (
+                wallet_address,
+                amount,
+                tx_signature,
+                status
+            )
+            VALUES (
+                ${address},
+                ${1000000},
+                ${tx},
+                'success'
+            )
         `;
 
         const newCount = count + 1;
