@@ -1,4 +1,3 @@
-// 載入環境變數與必要套件
 require('@dotenvx/dotenvx').config({ path: 'password.env' });
 
 const express = require('express');
@@ -16,11 +15,13 @@ const MINT_ADDRESS = process.env.MINT_ADDRESS || '';
 
 const sql = neon(process.env.POSTGRES_URL);
 
-// 連線到 Solana Devnet 測試網
 const connection = new Connection(
     clusterApiUrl('devnet'),
     'confirmed'
 );
+
+// Token 初始總供應量
+const INITIAL_SUPPLY = 1000000000;
 
 // ========================================
 // 從 Neon 讀取白名單
@@ -40,6 +41,7 @@ async function getWhitelist() {
             '❌ 讀取白名單失敗：',
             error.message
         );
+
         return [];
     }
 }
@@ -62,6 +64,7 @@ async function getHistory() {
         }
 
         return history;
+
     } catch (error) {
         console.error(
             '❌ 讀取空投紀錄失敗：',
@@ -73,7 +76,7 @@ async function getHistory() {
 }
 
 // ========================================
-// 從 Neon 讀取最近空投交易紀錄
+// 最近空投交易
 // ========================================
 
 async function getTransactions() {
@@ -98,12 +101,13 @@ async function getTransactions() {
             '❌ 讀取空投交易紀錄失敗：',
             error.message
         );
+
         return [];
     }
 }
 
 // ========================================
-// 從 Neon 讀取最近 Burn 交易紀錄
+// 最近 Burn 交易
 // ========================================
 
 async function getBurnTransactions() {
@@ -127,18 +131,19 @@ async function getBurnTransactions() {
             '❌ 讀取 Burn 交易紀錄失敗：',
             error.message
         );
+
         return [];
     }
 }
 
 // ========================================
-// 取得鏈上目前代幣總供應量
+// 取得鏈上目前供應量
 // ========================================
 
 async function getCurrentSupply() {
     try {
         if (!MINT_ADDRESS) {
-            return 1000000000;
+            return INITIAL_SUPPLY;
         }
 
         const mintPubkey = new PublicKey(MINT_ADDRESS);
@@ -148,11 +153,8 @@ async function getCurrentSupply() {
             mintPubkey
         );
 
-        const currentSupply =
-            Number(mintInfo.supply) /
+        return Number(mintInfo.supply) /
             (10 ** mintInfo.decimals);
-
-        return currentSupply;
 
     } catch (error) {
         console.log(
@@ -160,18 +162,19 @@ async function getCurrentSupply() {
             error.message
         );
 
-        return 1000000000;
+        return INITIAL_SUPPLY;
     }
 }
 
 // ========================================
-// API：即時統計資料
+// API：即時統計
 // ========================================
 
 app.get('/api/stats', async (req, res) => {
     try {
         const whitelist = await getWhitelist();
         const history = await getHistory();
+        const currentSupply = await getCurrentSupply();
 
         let totalAirdropCount = 0;
 
@@ -179,12 +182,21 @@ app.get('/api/stats', async (req, res) => {
             totalAirdropCount += Number(count);
         }
 
-        const currentSupply = await getCurrentSupply();
+        const burnedAmount = Math.max(
+            INITIAL_SUPPLY - currentSupply,
+            0
+        );
+
+        const burnedPercentage =
+            (burnedAmount / INITIAL_SUPPLY) * 100;
 
         res.json({
             whitelistCount: whitelist.length,
-            totalAirdropCount: totalAirdropCount,
-            currentSupply: currentSupply,
+            totalAirdropCount,
+            currentSupply,
+            initialSupply: INITIAL_SUPPLY,
+            burnedAmount,
+            burnedPercentage,
             mintAddress: MINT_ADDRESS
         });
 
@@ -201,7 +213,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ========================================
-// 首頁：網頁版儀表板
+// 首頁
 // ========================================
 
 app.get('/', async (req, res) => {
@@ -211,16 +223,42 @@ app.get('/', async (req, res) => {
         const transactions = await getTransactions();
         const burnTransactions = await getBurnTransactions();
 
+        const currentSupply = await getCurrentSupply();
+
+        // ========================================
+        // Token 統計
+        // ========================================
+
+        const burnedAmount = Math.max(
+            INITIAL_SUPPLY - currentSupply,
+            0
+        );
+
+        const burnedPercentage =
+            (burnedAmount / INITIAL_SUPPLY) * 100;
+
+        const supplyPercentage =
+            Math.max(
+                100 - burnedPercentage,
+                0
+            );
+
+        // ========================================
+        // 空投統計
+        // ========================================
+
         let totalAirdropCount = 0;
+
         let historyRows = '';
         let transactionRows = '';
         let burnTransactionRows = '';
 
         // ========================================
-        // 參與者領取紀錄
+        // 參與者紀錄
         // ========================================
 
         for (const [address, count] of Object.entries(history)) {
+
             totalAirdropCount += Number(count);
 
             historyRows += `
@@ -255,7 +293,7 @@ app.get('/', async (req, res) => {
         }
 
         // ========================================
-        // 最近空投交易紀錄
+        // 最近空投交易
         // ========================================
 
         for (const transaction of transactions) {
@@ -316,7 +354,7 @@ app.get('/', async (req, res) => {
         }
 
         // ========================================
-        // 最近 Burn 交易紀錄
+        // 最近 Burn
         // ========================================
 
         for (const transaction of burnTransactions) {
@@ -367,7 +405,9 @@ app.get('/', async (req, res) => {
             `;
         }
 
-        const currentSupply = await getCurrentSupply();
+        // ========================================
+        // HTML
+        // ========================================
 
         const html = `
         <!DOCTYPE html>
@@ -408,7 +448,6 @@ app.get('/', async (req, res) => {
                         );
 
                     color: #f8fafc;
-
                     min-height: 100vh;
                 }
 
@@ -428,6 +467,66 @@ app.get('/', async (req, res) => {
                         transparent !important;
 
                     color: #fff;
+                }
+
+                /* Token 圓環 */
+
+                .token-chart {
+                    width: 220px;
+                    height: 220px;
+
+                    border-radius: 50%;
+
+                    background:
+                        conic-gradient(
+                            #dc3545 ${burnedPercentage}%,
+                            #198754 ${burnedPercentage}% 100%
+                        );
+
+                    display: flex;
+
+                    align-items: center;
+                    justify-content: center;
+
+                    margin: auto;
+
+                    box-shadow:
+                        0 0 30px
+                        rgba(0, 0, 0, 0.35);
+                }
+
+                .token-chart-inner {
+                    width: 150px;
+                    height: 150px;
+
+                    border-radius: 50%;
+
+                    background:
+                        #171b3a;
+
+                    display: flex;
+
+                    flex-direction: column;
+
+                    align-items: center;
+                    justify-content: center;
+
+                    text-align: center;
+                }
+
+                .token-chart-number {
+                    font-size: 22px;
+                    font-weight: bold;
+                }
+
+                .token-chart-label {
+                    font-size: 13px;
+                    color: #adb5bd;
+                }
+
+                .stat-number {
+                    font-size: 28px;
+                    font-weight: bold;
                 }
 
             </style>
@@ -495,7 +594,7 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 數據卡片區 -->
+                <!-- 數據卡片 -->
 
                 <div class="row mb-4">
 
@@ -561,7 +660,120 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 合約地址 -->
+                <!-- Token 統計 -->
+
+                <div class="card custom-card shadow-sm mb-4">
+
+                    <div
+                        class="card-header bg-transparent py-3 border-bottom border-secondary"
+                    >
+
+                        <h5 class="m-0 fw-bold text-white">
+                            📊 Token Supply 統計
+                        </h5>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <div class="row align-items-center">
+
+                            <div class="col-md-5 text-center mb-4 mb-md-0">
+
+                                <div class="token-chart">
+
+                                    <div class="token-chart-inner">
+
+                                        <div class="token-chart-number">
+                                            ${burnedPercentage.toFixed(2)}%
+                                        </div>
+
+                                        <div class="token-chart-label">
+                                            已銷毀
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-7">
+
+                                <div class="mb-4">
+
+                                    <div class="text-secondary">
+                                        🪙 初始供應量
+                                    </div>
+
+                                    <div class="stat-number text-white">
+                                        ${INITIAL_SUPPLY.toLocaleString()} 枚
+                                    </div>
+
+                                </div>
+
+                                <div class="mb-4">
+
+                                    <div class="text-secondary">
+                                        💰 目前供應量
+                                    </div>
+
+                                    <div class="stat-number text-success">
+                                        ${currentSupply.toLocaleString()} 枚
+                                    </div>
+
+                                </div>
+
+                                <div class="mb-4">
+
+                                    <div class="text-secondary">
+                                        🔥 累計銷毀量
+                                    </div>
+
+                                    <div class="stat-number text-danger">
+                                        ${burnedAmount.toLocaleString()} 枚
+                                    </div>
+
+                                </div>
+
+                                <div>
+
+                                    <div class="d-flex justify-content-between mb-1">
+
+                                        <span class="text-secondary">
+                                            Supply
+                                        </span>
+
+                                        <span class="text-success">
+                                            ${supplyPercentage.toFixed(2)}%
+                                        </span>
+
+                                    </div>
+
+                                    <div
+                                        class="progress"
+                                        style="height: 12px;"
+                                    >
+
+                                        <div
+                                            class="progress-bar bg-success"
+                                            role="progressbar"
+                                            style="width: ${supplyPercentage}%"
+                                        ></div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Mint Address -->
 
                 <div class="card custom-card shadow-sm mb-4">
 
@@ -579,7 +791,7 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 詳細名單 -->
+                <!-- 參與者 -->
 
                 <div class="card custom-card shadow-sm">
 
@@ -627,14 +839,12 @@ app.get('/', async (req, res) => {
                                         historyRows ||
                                         `
                                         <tr>
-
                                             <td
                                                 colspan="3"
                                                 class="text-center py-4 text-muted"
                                             >
                                                 目前尚無領取紀錄
                                             </td>
-
                                         </tr>
                                         `
                                     }
@@ -649,7 +859,7 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 最近空投交易 -->
+                <!-- 最近空投 -->
 
                 <div class="card custom-card shadow-sm mt-4">
 
@@ -675,25 +885,11 @@ app.get('/', async (req, res) => {
 
                                     <tr class="text-secondary">
 
-                                        <th>
-                                            時間
-                                        </th>
-
-                                        <th>
-                                            錢包
-                                        </th>
-
-                                        <th>
-                                            空投數量
-                                        </th>
-
-                                        <th>
-                                            狀態
-                                        </th>
-
-                                        <th>
-                                            交易
-                                        </th>
+                                        <th>時間</th>
+                                        <th>錢包</th>
+                                        <th>空投數量</th>
+                                        <th>狀態</th>
+                                        <th>交易</th>
 
                                     </tr>
 
@@ -705,14 +901,12 @@ app.get('/', async (req, res) => {
                                         transactionRows ||
                                         `
                                         <tr>
-
                                             <td
                                                 colspan="5"
                                                 class="text-center py-4 text-muted"
                                             >
                                                 目前尚無空投交易
                                             </td>
-
                                         </tr>
                                         `
                                     }
@@ -727,7 +921,7 @@ app.get('/', async (req, res) => {
 
                 </div>
 
-                <!-- 最近 Burn 交易 -->
+                <!-- 最近 Burn -->
 
                 <div class="card custom-card shadow-sm mt-4">
 
@@ -753,21 +947,10 @@ app.get('/', async (req, res) => {
 
                                     <tr class="text-secondary">
 
-                                        <th>
-                                            時間
-                                        </th>
-
-                                        <th>
-                                            銷毀數量
-                                        </th>
-
-                                        <th>
-                                            狀態
-                                        </th>
-
-                                        <th>
-                                            交易
-                                        </th>
+                                        <th>時間</th>
+                                        <th>銷毀數量</th>
+                                        <th>狀態</th>
+                                        <th>交易</th>
 
                                     </tr>
 
@@ -779,14 +962,12 @@ app.get('/', async (req, res) => {
                                         burnTransactionRows ||
                                         `
                                         <tr>
-
                                             <td
                                                 colspan="4"
                                                 class="text-center py-4 text-muted"
                                             >
                                                 目前尚無 Burn 交易
                                             </td>
-
                                         </tr>
                                         `
                                     }
@@ -835,7 +1016,7 @@ app.get('/', async (req, res) => {
 });
 
 // ========================================
-// 啟動網頁伺服器
+// 啟動伺服器
 // ========================================
 
 app.listen(PORT, () => {
