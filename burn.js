@@ -2,6 +2,10 @@
 const { PublicKey } = require('@solana/web3.js');
 const { getOrCreateAssociatedTokenAccount, burn } = require('@solana/spl-token');
 
+
+const { neon } = require('@neondatabase/serverless');
+const sql = neon(process.env.POSTGRES_URL);
+
 // 建立一個函式，接收來自外部的參數
 async function handleBurn(ctx, connection, fromWallet, MINT_ADDRESS) {
     let amountToBurn = 0;
@@ -45,6 +49,17 @@ async function handleBurn(ctx, connection, fromWallet, MINT_ADDRESS) {
             fromWallet,
             amountToBurn * (10 ** 9) // 假設小數點為 9 位
         );
+        await sql`
+    INSERT INTO burn_transactions (
+        amount,
+        tx_signature,
+        status
+    ) VALUES (
+        ${amountToBurn},
+        ${tx},
+        'success'
+    )
+`;
         
         ctx.reply(`🔥 成功銷毀 ${amountToBurn} 枚代幣！\n總供應量已永久減少。\n交易 ID: https://explorer.solana.com/tx/${tx}?cluster=devnet`);
     } catch (err) {
