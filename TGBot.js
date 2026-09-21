@@ -229,14 +229,13 @@ bot.hears('🏫 關於我們', async (ctx) => {
 // 收到文字訊息
 // ========================================
 
-bot.on('text', async (ctx) => {
+bot.on('text', async (ctx, next) => {
     const text = ctx.message.text.trim();
 
     // 指令不處理
     if (text.startsWith('/')) {
-        return;
-    }
-
+    return next();
+}
     // 檢查是不是 Solana 地址
     const isSolanaAddress =
         /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(text);
