@@ -202,7 +202,7 @@ bot.hears('🎁 領取空投', async (ctx) => {
 
     await ctx.reply(
         '🎁 【GENC 領取空投】\n\n' +
-        '每次可領取 1,000,000 GENC。\n' +
+        '每次可領取 10,000GENC。\n' +
         '每個錢包最多可領取 3 次。\n\n' +
         '👉 請直接貼上您的 Solana 錢包地址即可開始領取。'
     );
@@ -522,7 +522,7 @@ bot.on('text', async (ctx, next) => {
         // ========================================
 
         await ctx.reply(
-            '⏳ 正在發送 1,000,000 GENC...\n' +
+            '⏳ 正在發送 10,000 GENC...\n' +
             '請稍候，正在等待 Solana Mainnet 確認。'
         );
 
