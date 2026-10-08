@@ -10,7 +10,8 @@ const {
 } = require('@solana/web3.js');
 
 const {
-    getMint
+    getMint,
+    TOKEN_2022_PROGRAM_ID
 } = require('@solana/spl-token');
 
 const app = express();
@@ -23,7 +24,7 @@ const MINT_ADDRESS = process.env.MINT_ADDRESS || '';
 const sql = neon(process.env.POSTGRES_URL);
 
 const connection = new Connection(
-    clusterApiUrl('devnet'),
+    clusterApiUrl('mainnet-beta'),
     'confirmed'
 );
 
@@ -156,10 +157,12 @@ async function getCurrentSupply() {
             new PublicKey(MINT_ADDRESS);
 
         const mintInfo =
-            await getMint(
-                connection,
-                mintPubkey
-            );
+    await getMint(
+        connection,
+        mintPubkey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
 
         return Number(mintInfo.supply) /
             (10 ** mintInfo.decimals);
