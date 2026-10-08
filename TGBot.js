@@ -1,4 +1,5 @@
 const { Telegraf, Markup } = require('telegraf');
+
 const {
     Connection,
     Keypair,
@@ -8,7 +9,9 @@ const {
 
 const {
     getOrCreateAssociatedTokenAccount,
-    transfer
+    getAccount,
+    transferChecked,
+    TOKEN_2022_PROGRAM_ID
 } = require('@solana/spl-token');
 
 const bs58 = require('bs58');
@@ -28,6 +31,16 @@ const MINT_ADDRESS = process.env.MINT_ADDRESS;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID || '0');
 
 // ========================================
+// GENC Token 設定
+// ========================================
+
+// GENC 是 Pump.fun Mainnet 上的 Token-2022
+const TOKEN_DECIMALS = 6;
+
+// 每次空投 1,000,000 GENC
+const AIRDROP_AMOUNT = 1;
+
+// ========================================
 // 環境變數檢查
 // ========================================
 
@@ -38,13 +51,17 @@ if (!TG_TOKEN || !PRIVATE_KEY || !MINT_ADDRESS || !process.env.POSTGRES_URL) {
 }
 
 // ========================================
-// Solana 設定
+// Solana Mainnet 設定
 // ========================================
 
 const connection = new Connection(
-    clusterApiUrl('devnet'),
+    clusterApiUrl('mainnet-beta'),
     'confirmed'
 );
+
+// ========================================
+// 管理錢包
+// ========================================
 
 const fromWallet = PRIVATE_KEY
     ? Keypair.fromSecretKey(bs58.decode(PRIVATE_KEY))
@@ -78,7 +95,11 @@ async function getWhitelist() {
         return rows.map(row => row.address);
 
     } catch (error) {
-        console.error('❌ 讀取白名單失敗：', error.message);
+        console.error(
+            '❌ 讀取白名單失敗：',
+            error.message
+        );
+
         return [];
     }
 }
@@ -103,7 +124,11 @@ async function getHistory() {
         return history;
 
     } catch (error) {
-        console.error('❌ 讀取空投紀錄失敗：', error.message);
+        console.error(
+            '❌ 讀取空投紀錄失敗：',
+            error.message
+        );
+
         return {};
     }
 }
@@ -113,6 +138,7 @@ async function getHistory() {
 // ========================================
 
 bot.command('myid', async (ctx) => {
+
     await ctx.reply(
         `🆔 您的 Telegram ID 是：${ctx.from.id}`
     );
@@ -123,10 +149,13 @@ bot.command('myid', async (ctx) => {
 // ========================================
 
 bot.command(['start', 'menu'], async (ctx) => {
+
     delete userStates[ctx.from.id];
 
     await ctx.reply(
-        '👋 歡迎使用 Solana 專題空投與代幣管理機器人！\n請點擊下方按鈕開始操作：',
+        '👋 歡迎使用創世版權 GENESIS COPYRIGHT 空投與代幣管理機器人！\n\n' +
+        '請點擊下方按鈕開始操作：',
+
         Markup.keyboard([
             ['📌 基本介紹', '🎁 領取空投'],
             ['📊 實時監控數據', '🏫 關於我們']
@@ -139,16 +168,26 @@ bot.command(['start', 'menu'], async (ctx) => {
 // ========================================
 
 bot.hears('📌 基本介紹', async (ctx) => {
+
     delete userStates[ctx.from.id];
 
     const introText =
-        `🤖 【專題技術架構介紹】\n\n` +
+        `🤖 【創世版權 GENESIS COPYRIGHT】\n\n` +
+
+        `🌐 區塊鏈：Solana Mainnet\n` +
+        `🪙 代幣：GENC\n` +
+        `📦 Token Standard：Token-2022\n` +
+        `💰 總供給：1,000,000,000 GENC\n` +
+        `🔢 Decimals：6\n\n` +
+
+        `【系統技術架構】\n` +
         `1️⃣ 核心後端：Node.js\n` +
         `2️⃣ 機器人框架：Telegraf (Telegram Bot API)\n` +
-        `3️⃣ 部署架構：Vercel Serverless (雲端無伺服器)\n` +
-        `4️⃣ 區塊鏈互動：@solana/web3.js & @solana/spl-token (Devnet 測試網)\n` +
-        `5️⃣ 安全管理：Vercel Environment Variables\n` +
-        `6️⃣ 資料儲存：Neon PostgreSQL`;
+        `3️⃣ 部署架構：Vercel Serverless\n` +
+        `4️⃣ 區塊鏈互動：@solana/web3.js & @solana/spl-token\n` +
+        `5️⃣ Token Standard：SPL Token-2022\n` +
+        `6️⃣ 資料儲存：Neon PostgreSQL\n` +
+        `7️⃣ 安全管理：Vercel Environment Variables`;
 
     await ctx.reply(introText);
 });
@@ -158,11 +197,14 @@ bot.hears('📌 基本介紹', async (ctx) => {
 // ========================================
 
 bot.hears('🎁 領取空投', async (ctx) => {
+
     userStates[ctx.from.id] = 'airdrop';
 
     await ctx.reply(
-        '🎁 【領取空投模式】\n\n' +
-        '👉 請直接在下方「貼上您的 Solana 錢包地址」即可自動領取！'
+        '🎁 【GENC 領取空投】\n\n' +
+        '每次可領取 1,000,000 GENC。\n' +
+        '每個錢包最多可領取 3 次。\n\n' +
+        '👉 請直接貼上您的 Solana 錢包地址即可開始領取。'
     );
 });
 
@@ -171,29 +213,41 @@ bot.hears('🎁 領取空投', async (ctx) => {
 // ========================================
 
 bot.hears('📊 實時監控數據', async (ctx) => {
+
     delete userStates[ctx.from.id];
 
     try {
+
         const whitelist = await getWhitelist();
         const history = await getHistory();
 
-        const totalAirdropCount = Object.values(history)
-            .reduce((total, count) => total + Number(count), 0);
+        const totalAirdropCount =
+            Object.values(history)
+                .reduce(
+                    (total, count) =>
+                        total + Number(count),
+                    0
+                );
 
         const statsText =
-            `📊 【專題代幣即時監控儀表板】\n\n` +
-            `🌐 區塊鏈網路：Solana Devnet (測試網)\n` +
-            `🪙 代幣合約地址：\n\`${MINT_ADDRESS}\`\n\n` +
+            `📊 【GENESIS COPYRIGHT 即時監控】\n\n` +
+
+            `🌐 區塊鏈網路：Solana Mainnet Beta\n` +
+            `🪙 代幣：GENC\n` +
+            `📦 Token Standard：Token-2022\n\n` +
+
+            `🔗 代幣 Mint：\n` +
+            `${MINT_ADDRESS}\n\n` +
+
             `👥 白名單總人數：${whitelist.length} 人\n` +
             `🎁 總空投發放次數：${totalAirdropCount} 次\n` +
+            `💰 每次空投：${AIRDROP_AMOUNT.toLocaleString()} GENC\n` +
             `💻 狀態：🟢 Vercel 雲端服務運行中`;
 
-        await ctx.reply(
-            statsText,
-            { parse_mode: 'Markdown' }
-        );
+        await ctx.reply(statsText);
 
     } catch (err) {
+
         console.error(
             '❌ 取得數據失敗：',
             err.message
@@ -210,10 +264,13 @@ bot.hears('📊 實時監控數據', async (ctx) => {
 // ========================================
 
 bot.hears('🏫 關於我們', async (ctx) => {
+
     delete userStates[ctx.from.id];
 
     await ctx.reply(
-        '🏫 點擊下方連結造訪正修科技大學資工系首頁：',
+        '🏫 正修科技大學 資訊工程系\n\n' +
+        '點擊下方連結前往系網：',
+
         Markup.inlineKeyboard([
             [
                 Markup.button.url(
@@ -230,13 +287,21 @@ bot.hears('🏫 關於我們', async (ctx) => {
 // ========================================
 
 bot.on('text', async (ctx, next) => {
+
     const text = ctx.message.text.trim();
 
+    // ========================================
     // 指令不處理
+    // ========================================
+
     if (text.startsWith('/')) {
-    return next();
-}
+        return next();
+    }
+
+    // ========================================
     // 檢查是不是 Solana 地址
+    // ========================================
+
     const isSolanaAddress =
         /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(text);
 
@@ -247,8 +312,12 @@ bot.on('text', async (ctx, next) => {
     const userId = ctx.from.id;
     const currentMode = userStates[userId];
 
+    // ========================================
     // 必須先進入領取模式
+    // ========================================
+
     if (!currentMode || currentMode !== 'airdrop') {
+
         return ctx.reply(
             '💡 請先點擊下方的【🎁 領取空投】按鈕，然後再貼上地址！'
         );
@@ -256,14 +325,69 @@ bot.on('text', async (ctx, next) => {
 
     const address = text;
 
+    // ========================================
     // 清除狀態
+    // ========================================
+
     delete userStates[userId];
 
     console.log(
-        `[Airdrop] TG用戶(${userId}) 透過貼上地址申請空投 ➡️ 地址: ${address}`
+        `[Airdrop] TG用戶(${userId}) 透過貼上地址申請 GENC 空投 ➡️ 地址: ${address}`
     );
 
     try {
+
+        // ========================================
+        // 驗證 PublicKey
+        // ========================================
+
+        const to = new PublicKey(address);
+
+        // ========================================
+        // 檢查必要設定
+        // ========================================
+
+        if (!fromWallet) {
+            throw new Error(
+                'PRIVATE_KEY 未設定'
+            );
+        }
+
+        if (!MINT_ADDRESS) {
+            throw new Error(
+                'MINT_ADDRESS 未設定'
+            );
+        }
+
+        // ========================================
+        // 取得 Mint
+        // ========================================
+
+        const mint = new PublicKey(MINT_ADDRESS);
+
+        // ========================================
+        // 確認 Mint 是 Token-2022
+        // ========================================
+
+        const mintInfo =
+            await connection.getAccountInfo(mint);
+
+        if (!mintInfo) {
+            throw new Error(
+                '找不到 GENC Mint，請確認 MINT_ADDRESS 是否正確'
+            );
+        }
+
+        if (
+            !mintInfo.owner.equals(
+                TOKEN_2022_PROGRAM_ID
+            )
+        ) {
+            throw new Error(
+                '目前設定的 Mint 不是 Token-2022 Mint'
+            );
+        }
+
         // ========================================
         // 取得目前資料庫資料
         // ========================================
@@ -296,7 +420,8 @@ bot.on('text', async (ctx, next) => {
         // 檢查領取次數
         // ========================================
 
-        const count = Number(history[address] || 0);
+        const count =
+            Number(history[address] || 0);
 
         if (count >= 3) {
 
@@ -309,51 +434,120 @@ bot.on('text', async (ctx, next) => {
             );
         }
 
-        await ctx.reply(
-            '⏳ 正在發送 1,000,000 枚...請稍候'
+        // ========================================
+        // 建立 Token-2022 ATA
+        // ========================================
+
+        console.log(
+            `[Airdrop] 正在取得發送方 Token-2022 ATA...`
         );
-
-        // ========================================
-        // Solana 空投
-        // ========================================
-
-        const mint = new PublicKey(MINT_ADDRESS);
-        const to = new PublicKey(address);
-
-        if (!fromWallet) {
-            throw new Error(
-                'PRIVATE_KEY 未設定'
-            );
-        }
 
         const fromAta =
             await getOrCreateAssociatedTokenAccount(
                 connection,
                 fromWallet,
                 mint,
-                fromWallet.publicKey
+                fromWallet.publicKey,
+                false,
+                'confirmed',
+                undefined,
+                TOKEN_2022_PROGRAM_ID
             );
+
+        console.log(
+            `[Airdrop] 發送方 Token Account: ${fromAta.address.toBase58()}`
+        );
+
+        // ========================================
+        // 取得 / 建立接收方 Token-2022 ATA
+        // ========================================
+
+        console.log(
+            `[Airdrop] 正在取得接收方 Token-2022 ATA...`
+        );
 
         const toAta =
             await getOrCreateAssociatedTokenAccount(
                 connection,
                 fromWallet,
                 mint,
-                to
+                to,
+                false,
+                'confirmed',
+                undefined,
+                TOKEN_2022_PROGRAM_ID
             );
 
-        const amount =
-            BigInt(1000000) *
-            BigInt(10 ** 9);
-
-        const tx = await transfer(
-            connection,
-            fromWallet,
-            fromAta.address,
-            toAta.address,
-            fromWallet.publicKey,
-            amount
+        console.log(
+            `[Airdrop] 接收方 Token Account: ${toAta.address.toBase58()}`
         );
+
+        // ========================================
+        // 確認發送方 GENC 餘額
+        // ========================================
+
+        const fromAccount =
+            await getAccount(
+                connection,
+                fromAta.address,
+                'confirmed',
+                TOKEN_2022_PROGRAM_ID
+            );
+
+        // ========================================
+        // 1,000,000 GENC
+        //
+        // GENC decimals = 6
+        //
+        // 1,000,000 × 10^6
+        // = 1,000,000,000,000 最小單位
+        // ========================================
+
+        const amount =
+            BigInt(AIRDROP_AMOUNT) *
+            BigInt(10 ** TOKEN_DECIMALS);
+
+        const availableBalance =
+            BigInt(fromAccount.amount);
+
+        if (availableBalance < amount) {
+
+            throw new Error(
+                `發送方 GENC 餘額不足。目前餘額：${Number(availableBalance) / 10 ** TOKEN_DECIMALS} GENC`
+            );
+        }
+
+        // ========================================
+        // 開始空投
+        // ========================================
+
+        await ctx.reply(
+            '⏳ 正在發送 1,000,000 GENC...\n' +
+            '請稍候，正在等待 Solana Mainnet 確認。'
+        );
+
+        console.log(
+            `[Airdrop] 開始轉帳 ${AIRDROP_AMOUNT.toLocaleString()} GENC`
+        );
+
+        // ========================================
+        // Token-2022 TransferChecked
+        // ========================================
+
+        const tx =
+            await transferChecked(
+                connection,
+                fromWallet,
+                fromAta.address,
+                mint,
+                toAta.address,
+                fromWallet,
+                amount,
+                TOKEN_DECIMALS,
+                [],
+                undefined,
+                TOKEN_2022_PROGRAM_ID
+            );
 
         // ========================================
         // 空投成功 → 寫入 Neon
@@ -374,7 +568,7 @@ bot.on('text', async (ctx, next) => {
         `;
 
         // ========================================
-        // 新增：空投交易紀錄
+        // 新增空投交易紀錄
         // ========================================
 
         await sql`
@@ -386,31 +580,40 @@ bot.on('text', async (ctx, next) => {
             )
             VALUES (
                 ${address},
-                ${1000000},
+                ${AIRDROP_AMOUNT},
                 ${tx},
                 'success'
             )
         `;
 
-        const newCount = count + 1;
+        const newCount =
+            count + 1;
 
         console.log(
-            `💰 【空投成功】地址: ${address} | 累計次數: ${newCount}/3 | TX: ${tx}`
+            `💰 【GENC 空投成功】地址: ${address} | 累計次數: ${newCount}/3 | TX: ${tx}`
         );
 
+        // ========================================
+        // 回覆使用者
+        // ========================================
+
         await ctx.reply(
-            `🎉 領取成功！(已領 ${newCount}/3 次)\n` +
-            `交易 ID: https://explorer.solana.com/tx/${tx}?cluster=devnet`
+            `🎉 GENC 領取成功！\n\n` +
+            `🪙 數量：${AIRDROP_AMOUNT.toLocaleString()} GENC\n` +
+            `📊 已領：${newCount}/3 次\n\n` +
+            `🔗 交易：\n` +
+            `https://explorer.solana.com/tx/${tx}`
         );
 
     } catch (err) {
 
         console.error(
-            `❌ 【空投失敗】目標地址: ${address} | 原因: ${err.message}`
+            `❌ 【GENC 空投失敗】目標地址: ${address} | 原因: ${err.message}`
         );
 
         await ctx.reply(
-            `❌ 失敗原因：${err.message}`
+            `❌ 空投失敗\n\n` +
+            `原因：${err.message}`
         );
     }
 });
@@ -433,7 +636,7 @@ bot.command('burn', async (ctx) => {
     }
 
     console.log(
-        `🔥 【銷毀啟動】管理員(${ctx.from.id}) 正在執行代幣銷毀...`
+        `🔥 【銷毀啟動】管理員(${ctx.from.id}) 正在執行 GENC 銷毀...`
     );
 
     await handleBurn(
