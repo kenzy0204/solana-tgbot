@@ -2170,7 +2170,7 @@ tr:hover td {
 
         <span class="network-dot"></span>
 
-        DEVNET
+        MAINNET
 
     </div>
 
