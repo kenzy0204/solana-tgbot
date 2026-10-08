@@ -38,7 +38,7 @@ const ADMIN_ID = parseInt(process.env.ADMIN_ID || '0');
 const TOKEN_DECIMALS = 6;
 
 // 每次空投 1,000,000 GENC
-const AIRDROP_AMOUNT = 1_000_000;
+const AIRDROP_AMOUNT = 10_000;
 
 // ========================================
 // 環境變數檢查
